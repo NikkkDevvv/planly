@@ -3,8 +3,14 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 
+// ---------------------------------------------------
+// [TESTING DOC] Import halaman tujuan navigasi
+import 'register_screen.dart';
+import '../../navigation/screens/main_layout.dart';
+// ---------------------------------------------------
+
 class LoginScreen extends StatelessWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +110,16 @@ class LoginScreen extends StatelessWidget {
                         text: 'Login',
                         icon: Icons.arrow_forward,
                         onPressed: () {
-                          // TODO: Implementasi logika login dengan Sanctum
+                          // ---------------------------------------------------
+                          // [TESTING DOC] Navigasi pengujian untuk bypass login ke MainLayout
+                          // Menggunakan pushReplacement agar user tidak bisa 'back' ke halaman login
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MainLayout(),
+                            ),
+                          );
+                          // ---------------------------------------------------
                         },
                       ),
                     ],
@@ -125,7 +140,16 @@ class LoginScreen extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        // TODO: Navigasi ke halaman Register
+                        // ---------------------------------------------------
+                        // [TESTING DOC] Memperbaiki error navigasi ke RegisterScreen
+                        // Menggunakan push agar user bisa kembali (back) ke halaman Login
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const RegisterScreen(),
+                          ),
+                        );
+                        // ---------------------------------------------------
                       },
                       child: const Text(
                         'Register',
