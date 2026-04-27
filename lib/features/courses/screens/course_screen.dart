@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
+// [TESTING DOC] Import halaman tujuan navigasi
+import 'add_course_screen.dart';
+import 'course_detail_screen.dart';
+
 class CoursesScreens extends StatelessWidget {
   const CoursesScreens({super.key});
 
@@ -36,6 +40,7 @@ class CoursesScreens extends StatelessWidget {
 
             // Courses List / Grid
             _buildCourseCard(
+              context, // [TESTING DOC] Passing context untuk navigasi
               courseCode: 'TIF301',
               courseName: 'Machine Learning',
               sks: '3 SKS',
@@ -48,6 +53,7 @@ class CoursesScreens extends StatelessWidget {
             const SizedBox(height: 16),
 
             _buildCourseCard(
+              context,
               courseCode: 'TIF302',
               courseName: 'Mobile Programming',
               sks: '3 SKS',
@@ -60,6 +66,7 @@ class CoursesScreens extends StatelessWidget {
             const SizedBox(height: 16),
 
             _buildCourseCard(
+              context,
               courseCode: 'TIF303',
               courseName: 'Data Communication',
               sks: '2 SKS',
@@ -72,6 +79,7 @@ class CoursesScreens extends StatelessWidget {
             const SizedBox(height: 16),
 
             _buildCourseCard(
+              context,
               courseCode: 'TIF304',
               courseName: 'Operating Systems',
               sks: '3 SKS',
@@ -88,7 +96,13 @@ class CoursesScreens extends StatelessWidget {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: FloatingActionButton(
-          onPressed: () {},
+          onPressed: () {
+            // [TESTING DOC] Navigasi ke halaman Tambah Course
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddCourseScreen()),
+            );
+          },
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
@@ -102,7 +116,8 @@ class CoursesScreens extends StatelessWidget {
   }
 
   // Widget pembantu untuk merender kartu mata kuliah
-  Widget _buildCourseCard({
+  Widget _buildCourseCard(
+    BuildContext context, {
     required String courseCode,
     required String courseName,
     required String sks,
@@ -112,87 +127,97 @@ class CoursesScreens extends StatelessWidget {
     required Color accentColor,
     required Color textColor,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withOpacity(0.3)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          decoration: BoxDecoration(
-            border: Border(left: BorderSide(color: accentColor, width: 4)),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          courseCode,
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                            color: textColor,
+    // [TESTING DOC] Membungkus dengan InkWell untuk interaksi klik ke halaman Detail
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const CourseDetailScreen()),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.3)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border(left: BorderSide(color: accentColor, width: 4)),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            courseCode,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                              color: textColor,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          courseName,
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onSurface,
-                            height: 1.2,
+                          const SizedBox(height: 4),
+                          Text(
+                            courseName,
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.onSurface,
+                              height: 1.2,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceContainerHigh,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      sks,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.onSurfaceVariant,
+                        ],
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              _buildCourseDetailRow(Icons.person, lecturer),
-              const SizedBox(height: 8),
-              _buildCourseDetailRow(Icons.schedule, schedule),
-              const SizedBox(height: 8),
-              _buildCourseDetailRow(Icons.location_on, location),
-            ],
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        sks,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _buildCourseDetailRow(Icons.person, lecturer),
+                const SizedBox(height: 8),
+                _buildCourseDetailRow(Icons.schedule, schedule),
+                const SizedBox(height: 8),
+                _buildCourseDetailRow(Icons.location_on, location),
+              ],
+            ),
           ),
         ),
       ),
