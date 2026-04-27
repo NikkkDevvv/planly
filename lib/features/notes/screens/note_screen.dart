@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 
+// [TESTING DOC] Import halaman tujuan navigasi
+import 'add_note_screen.dart';
+import 'edit_note_screen.dart';
+import 'note_detail_screen.dart';
+
 class NotesScreens extends StatelessWidget {
   const NotesScreens({super.key});
 
@@ -49,6 +54,7 @@ class NotesScreens extends StatelessWidget {
 
             // Note Card 1 (Important)
             _buildNoteCard(
+              context, // [TESTING DOC] Passing context untuk navigasi
               tag: 'Advanced Physics 301',
               date: 'Oct 24',
               title: 'Quantum Entanglement Basics',
@@ -66,9 +72,10 @@ class NotesScreens extends StatelessWidget {
 
             // Note Card 2
             _buildNoteCard(
+              context,
               tag: 'Design History',
               tagBgColor: AppColors.secondaryContainer,
-              tagTextColor: const Color(0xFF54647A), // on-secondary-container
+              tagTextColor: const Color(0xFF54647A),
               date: 'Oct 22',
               title: 'Bauhaus Movement',
               content:
@@ -78,6 +85,7 @@ class NotesScreens extends StatelessWidget {
 
             // Note Card 3 (Review Needed)
             _buildNoteCard(
+              context,
               tag: 'Computer Science',
               date: 'Oct 20',
               title: 'Data Structures: Trees',
@@ -93,6 +101,7 @@ class NotesScreens extends StatelessWidget {
 
             // Note Card 4
             _buildNoteCard(
+              context,
               tag: 'Literature',
               date: 'Oct 18',
               title: 'Modernist Poetry',
@@ -103,6 +112,7 @@ class NotesScreens extends StatelessWidget {
 
             // Note Card 5
             _buildNoteCard(
+              context,
               tag: 'Project Management',
               date: 'Oct 15',
               title: 'Agile Methodologies',
@@ -117,7 +127,11 @@ class NotesScreens extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 16.0),
         child: FloatingActionButton(
           onPressed: () {
-            // TODO: Aksi untuk menambah catatan baru
+            // [TESTING DOC] Navigasi ke halaman Tambah Catatan
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const AddNoteScreen()),
+            );
           },
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -129,7 +143,8 @@ class NotesScreens extends StatelessWidget {
   }
 
   // Widget pembantu untuk merender Kartu Catatan
-  Widget _buildNoteCard({
+  Widget _buildNoteCard(
+    BuildContext context, {
     required String tag,
     Color tagBgColor = AppColors.surfaceContainerHigh,
     Color tagTextColor = AppColors.onSurface,
@@ -138,82 +153,92 @@ class NotesScreens extends StatelessWidget {
     required String content,
     Widget? footer,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.03),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: tagBgColor,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  tag,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: tagTextColor,
+    // [TESTING DOC] Membungkus dengan InkWell untuk interaksi klik ke halaman Detail
+    return InkWell(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const NoteDetailScreen()),
+        );
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tagBgColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    tag,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: tagTextColor,
+                    ),
                   ),
                 ),
-              ),
-              Text(
-                date,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.secondary,
+                Text(
+                  date,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.secondary,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                color: AppColors.onSurface,
               ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              content,
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.secondary,
+                height: 1.5,
+              ),
+            ),
+            if (footer != null) ...[
+              const SizedBox(height: 16),
+              const Divider(height: 1),
+              const SizedBox(height: 16),
+              footer,
             ],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: AppColors.onSurface,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            content,
-            maxLines: 4,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 14,
-              color: AppColors.secondary,
-              height: 1.5,
-            ),
-          ),
-          if (footer != null) ...[
-            const SizedBox(height: 16),
-            const Divider(height: 1),
-            const SizedBox(height: 16),
-            footer,
           ],
-        ],
+        ),
       ),
     );
   }
