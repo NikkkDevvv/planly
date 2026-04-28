@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../../auth/models/note_model.dart';
+import '../../../data/models/note_model.dart';
 
 class NoteService {
   final String baseUrl =

@@ -5,7 +5,9 @@ class CustomTextField extends StatelessWidget {
   final String label;
   final String hintText;
   final bool isPassword;
-  final Widget? trailing; // Untuk tombol "Forgot password?" nantinya
+  final Widget? trailing;
+  final TextEditingController? controller; // Tambahkan ini
+  final TextInputType? keyboardType; // Tambahkan ini
 
   const CustomTextField({
     super.key,
@@ -13,6 +15,8 @@ class CustomTextField extends StatelessWidget {
     required this.hintText,
     this.isPassword = false,
     this.trailing,
+    this.controller, // Tambahkan ini
+    this.keyboardType, // Tambahkan ini
   });
 
   @override
@@ -31,12 +35,15 @@ class CustomTextField extends StatelessWidget {
                 color: AppColors.onSurfaceVariant,
               ),
             ),
-            ?trailing,
+            // Perbaikan sintaks trailing
+            if (trailing != null) trailing!, 
           ],
         ),
         const SizedBox(height: 4),
         TextField(
+          controller: controller, // Pasang di sini
           obscureText: isPassword,
+          keyboardType: keyboardType, // Pasang di sini
           style: const TextStyle(fontSize: 14, color: AppColors.onSurface),
           decoration: InputDecoration(
             hintText: hintText,

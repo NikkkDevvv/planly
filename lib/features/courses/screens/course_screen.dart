@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import 'add_course_screen.dart';
 import 'course_detail_screen.dart';
-import '../../auth/models/course_model.dart';
+import '../../../data/models/course_model.dart';
 import '../services/course_service.dart';
 
 class CoursesScreens extends StatefulWidget {

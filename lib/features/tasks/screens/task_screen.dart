@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../auth/models/task_model.dart';
+import '../../../data/models/task_model.dart';
 import '../services/task_service.dart';
 import 'add_task_screen.dart';
 import 'task_detail_screen.dart';

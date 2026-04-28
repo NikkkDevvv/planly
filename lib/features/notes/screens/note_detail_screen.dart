@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../auth/models/note_model.dart';
+import '../../../data/models/note_model.dart';
 import '../services/note_service.dart';
 import 'edit_note_screen.dart';
 

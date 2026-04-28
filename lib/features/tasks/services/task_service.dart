@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import '../../auth/models/task_model.dart';
+import '../../../data/models/task_model.dart';
 
 class TaskService {
   final String base_url = dotenv.env['API_BASE_URL'] ?? '';

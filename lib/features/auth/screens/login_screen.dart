@@ -2,15 +2,67 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
-
-// ---------------------------------------------------
-// [TESTING DOC] Import halaman tujuan navigasi
+import '../services/auth_service.dart';
 import 'register_screen.dart';
 import '../../navigation/screens/main_layout.dart';
-// ---------------------------------------------------
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final TextEditingController _email_controller = TextEditingController();
+  final TextEditingController _password_controller = TextEditingController();
+  final AuthService _auth_service = AuthService();
+  
+  bool _is_loading = false;
+
+  @override
+  void dispose() {
+    _email_controller.dispose();
+    _password_controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handle_login() async {
+    final email = _email_controller.text.trim();
+    final password = _password_controller.text.trim();
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter email and password')),
+      );
+      return;
+    }
+
+    setState(() => _is_loading = true);
+
+    try {
+      final success = await _auth_service.login(email, password);
+
+      if (success && mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const MainLayout()),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Invalid email or password')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _is_loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,7 +75,6 @@ class LoginScreen extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Brand / Logo
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
@@ -44,8 +95,6 @@ class LoginScreen extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 32),
-
-                // Login Card
                 Container(
                   width: double.infinity,
                   constraints: const BoxConstraints(maxWidth: 400),
@@ -81,19 +130,20 @@ class LoginScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-
-                      const CustomTextField(
+                      CustomTextField(
+                        controller: _email_controller,
                         label: 'Email',
                         hintText: 'you@example.com',
+                        keyboardType: TextInputType.emailAddress,
                       ),
                       const SizedBox(height: 16),
-
                       CustomTextField(
+                        controller: _password_controller,
                         label: 'Password',
                         hintText: '••••••••',
                         isPassword: true,
                         trailing: GestureDetector(
-                          onTap: () {}, // Aksi lupa password
+                          onTap: () {},
                           child: const Text(
                             'Forgot password?',
                             style: TextStyle(
@@ -105,29 +155,15 @@ class LoginScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 24),
-
                       CustomButton(
-                        text: 'Login',
-                        icon: Icons.arrow_forward,
-                        onPressed: () {
-                          // ---------------------------------------------------
-                          // [TESTING DOC] Navigasi pengujian untuk bypass login ke MainLayout
-                          // Menggunakan pushReplacement agar user tidak bisa 'back' ke halaman login
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const MainLayout(),
-                            ),
-                          );
-                          // ---------------------------------------------------
-                        },
+                        text: _is_loading ? 'Logging in...' : 'Login',
+                        icon: _is_loading ? null : Icons.arrow_forward,
+                        onPressed: _is_loading ? null : _handle_login,
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 24),
-
-                // Registration Link
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -140,16 +176,12 @@ class LoginScreen extends StatelessWidget {
                     ),
                     TextButton(
                       onPressed: () {
-                        // ---------------------------------------------------
-                        // [TESTING DOC] Memperbaiki error navigasi ke RegisterScreen
-                        // Menggunakan push agar user bisa kembali (back) ke halaman Login
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const RegisterScreen(),
                           ),
                         );
-                        // ---------------------------------------------------
                       },
                       child: const Text(
                         'Register',
