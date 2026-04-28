@@ -111,7 +111,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         'user_id': 1,
         'course_code': _codeController.text,
         'course_name': _nameController.text,
-        'credits': int.parse(_creditsController.text),
+        'sks': int.parse(_creditsController.text),
         'lecturer': _lecturerController.text,
         'room': _roomController.text,
         'day_of_week': dayOfWeek,
