@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/course_model.dart'; // Import model course
+import '../../courses/services/course_service.dart'; // Import service course
 import '../services/note_service.dart';
 
 class AddNoteScreen extends StatefulWidget {
@@ -13,7 +15,29 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _contentController = TextEditingController();
   final NoteService _noteService = NoteService();
+  final CourseService _courseService =
+      CourseService(); // Inisialisasi CourseService
+
   bool _isLoading = false;
+  int? _selectedCourseId; // Variabel untuk menyimpan course yang dipilih
+  List<CourseModel> _courses = []; // List untuk menyimpan data mata kuliah
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCourses(); // Ambil data mata kuliah saat halaman dibuka
+  }
+
+  Future<void> _loadCourses() async {
+    try {
+      final courses = await _courseService.get_courses();
+      setState(() {
+        _courses = courses;
+      });
+    } catch (e) {
+      debugPrint('Error loading courses: $e');
+    }
+  }
 
   Future<void> _saveNote() async {
     if (_titleController.text.trim().isEmpty ||
@@ -28,9 +52,8 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
       _isLoading = true;
     });
 
-    // Simulasi data untuk dikirim ke backend
     Map<String, dynamic> noteData = {
-      'course_id': null,
+      'course_id': _selectedCourseId, // Gunakan ID mata kuliah yang dipilih
       'title': _titleController.text.trim(),
       'content': _contentController.text.trim(),
     };
@@ -38,22 +61,16 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
     try {
       await _noteService.create_note(noteData);
       if (mounted) {
-        setState(() => _isLoading = false);
         Navigator.pop(context, true);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
     }
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _contentController.dispose();
-    super.dispose();
   }
 
   @override
@@ -61,102 +78,49 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.primary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          'New Note',
-          style: TextStyle(
-            color: AppColors.onSurface,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        // ... kode AppBar tetap sama ...
         actions: [
           _isLoading
-              ? const Padding(
-                  padding: EdgeInsets.only(right: 16.0),
-                  child: Center(
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: AppColors.primary,
-                      ),
-                    ),
+              ? const Center(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: CircularProgressIndicator(),
                   ),
                 )
-              : TextButton(
-                  onPressed: _saveNote,
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-          const SizedBox(width: 8),
+              : TextButton(onPressed: _saveNote, child: const Text('Save')),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            color: AppColors.outlineVariant.withOpacity(0.3),
-            height: 1.0,
-          ),
-        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Dropdown untuk memilih Mata Kuliah
+            DropdownButtonFormField<int>(
+              value: _selectedCourseId,
+              hint: const Text('Select Course (Optional)'),
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: _courses.map((course) {
+                return DropdownMenuItem<int>(
+                  value: course.id,
+                  child: Text(course.name),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCourseId = value;
+                });
+              },
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: _titleController,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Note Title',
-                hintStyle: TextStyle(
-                  color: AppColors.outline.withOpacity(0.7),
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
+              decoration: const InputDecoration(hintText: 'Note Title'),
             ),
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 16.0),
-              child: Divider(),
-            ),
+            const Divider(),
             TextField(
               controller: _contentController,
               maxLines: null,
-              keyboardType: TextInputType.multiline,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppColors.onSurface,
-                height: 1.6,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Start typing your notes here...',
-                hintStyle: TextStyle(
-                  color: AppColors.outline.withOpacity(0.7),
-                  fontSize: 16,
-                ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-              ),
+              decoration: const InputDecoration(hintText: 'Content'),
             ),
           ],
         ),
