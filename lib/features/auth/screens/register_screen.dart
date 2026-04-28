@@ -34,6 +34,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final email = _email_controller.text.trim();
     final password = _password_controller.text.trim();
     final confirm_password = _confirm_password_controller.text.trim();
+    final nim = "12345678"; // Placeholder NIM, ganti sesuai kebutuhan
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
       _show_message('Please fill in all fields');
@@ -48,13 +49,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _is_loading = true);
 
     try {
-      final success = await _auth_service.register(name, email, password);
+      final result = await _auth_service.register(name, email, password,nim);
 
-      if (success && mounted) {
+      if (result['success'] == true && mounted) {
         _show_message('Registration successful! Please login.');
-        Navigator.pop(context); // Kembali ke halaman Login
+        Navigator.pop(context);
       } else if (mounted) {
-        _show_message('Registration failed. Email might be taken.');
+        _show_message(result['message']);
       }
     } catch (e) {
       if (mounted) _show_message('Error: ${e.toString()}');
@@ -64,7 +65,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _show_message(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
   }
 
   @override

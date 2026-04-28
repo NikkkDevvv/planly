@@ -20,12 +20,11 @@ class AuthService {
         }),
       );
 
-      print("HTTP STATUS: ${response.statusCode}");
-      print("RESPONSE BODY: ${response.body}");
+      print("LOGIN STATUS: ${response.statusCode}");
+      print("LOGIN BODY: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        
         final String token = data['token'] ?? data['access_token'] ?? '';
 
         if (token.isNotEmpty) {
@@ -41,22 +40,36 @@ class AuthService {
     }
   }
 
-  Future<bool> register(String name, String email, String password) async {
-    final response = await http.post(
-      Uri.parse('$base_url/auth/register'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: jsonEncode({
-        'name': name,
-        'email': email,
-        'password': password,
-        'password_confirmation': password,
-      }),
-    );
+  // UPDATE: Fungsi Register sekarang mengembalikan Map agar bisa membawa pesan error
+  Future<Map<String, dynamic>> register(String name, String email, String password, String nim) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$base_url/auth/register'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'password': password,
+          'password_confirmation': password,
+          'nim': nim,
+        }),
+      );
 
-    return response.statusCode == 201 || response.statusCode == 200;
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        return {'success': true};
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['message'] ?? 'Registration failed'
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
   }
 
   Future<bool> logout() async {
