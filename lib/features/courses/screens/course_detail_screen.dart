@@ -3,6 +3,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../data/models/course_model.dart';
 import '../../../data/models/task_model.dart';
 import '../../tasks/services/task_service.dart';
+import '../services/course_service.dart';
 import 'edit_course_screen.dart';
 
 class CourseDetailScreen extends StatefulWidget {
@@ -15,16 +16,52 @@ class CourseDetailScreen extends StatefulWidget {
 }
 
 class _CourseDetailScreenState extends State<CourseDetailScreen> {
-  final TaskService _taskService = TaskService();
-  late Future<List<TaskModel>> _futureTasks;
+  final TaskService _task_service = TaskService();
+  final CourseService _course_service = CourseService();
+  late Future<List<TaskModel>> _future_tasks;
 
   @override
   void initState() {
     super.initState();
-    _futureTasks = _taskService.get_tasks_by_course(widget.course.id);
+    _future_tasks = _task_service.get_tasks_by_course(widget.course.id);
   }
 
-  Map<String, String> _getNextDate(String dayName) {
+  Future<void> _delete_course() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Course'),
+        content: const Text('Are you sure you want to delete this course?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final success = await _course_service.delete_course(widget.course.id);
+        if (success && mounted) {
+          Navigator.pop(context, true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${e.toString()}')),
+          );
+        }
+      }
+    }
+  }
+
+  Map<String, String> _get_next_date(String day_name) {
     const months = [
       '', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
       'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
@@ -34,14 +71,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       'friday': 5, 'saturday': 6, 'sunday': 7
     };
     
-    int target = days[dayName.toLowerCase()] ?? 1;
+    int target = days[day_name.toLowerCase()] ?? 1;
     DateTime now = DateTime.now();
     int current = now.weekday;
     int diff = target - current;
     
-    if (diff < 0) {
-      diff += 7;
-    }
+    if (diff < 0) diff += 7;
     
     DateTime next = now.add(Duration(days: diff));
     
@@ -51,22 +86,28 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     };
   }
 
-  String _formatStatus(String date) {
-    DateTime deadline = DateTime.parse(date);
-    DateTime today = DateTime.now();
-    DateTime tomorrow = today.add(const Duration(days: 1));
+  String _format_status(String date) {
+    try {
+      DateTime deadline = DateTime.parse(date);
+      DateTime today = DateTime.now();
+      DateTime tomorrow = DateTime(today.year, today.month, today.day + 1);
 
-    if (deadline.year == tomorrow.year && deadline.month == tomorrow.month && deadline.day == tomorrow.day) {
-      return 'Due Tomorrow';
-    } else if (deadline.isAfter(today)) {
-      return 'Next Week';
+      if (deadline.year == tomorrow.year && 
+          deadline.month == tomorrow.month && 
+          deadline.day == tomorrow.day) {
+        return 'Due Tomorrow';
+      } else if (deadline.isAfter(today)) {
+        return 'Next Week';
+      }
+      return 'Upcoming';
+    } catch (e) {
+      return 'Upcoming';
     }
-    return 'Upcoming';
   }
 
   @override
   Widget build(BuildContext context) {
-    final nextClass = _getNextDate(widget.course.day_of_week);
+    final next_class = _get_next_date(widget.course.day_of_week);
 
     return Scaffold(
       backgroundColor: AppColors.surface,
@@ -96,14 +137,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   builder: (context) => EditCourseScreen(course: widget.course),
                 ),
               );
-              if (result == true) {
-                // Future implementation: Refresh data here
+              if (result == true && mounted) {
+                Navigator.pop(context, true);
               }
             },
           ),
           IconButton(
             icon: const Icon(Icons.delete, color: Color(0xFFBA1A1A)),
-            onPressed: () {},
+            onPressed: _delete_course,
           ),
         ],
         bottom: PreferredSize(
@@ -140,10 +181,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 4,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
                       color: AppColors.primaryContainer.withOpacity(0.4),
                       borderRadius: BorderRadius.circular(16),
@@ -190,11 +228,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             const SizedBox(height: 32),
             Row(
               children: const [
-                Icon(
-                  Icons.calendar_today,
-                  size: 20,
-                  color: AppColors.onSurface,
-                ),
+                Icon(Icons.calendar_today, size: 20, color: AppColors.onSurface),
                 SizedBox(width: 8),
                 Text(
                   'Upcoming Schedule',
@@ -219,10 +253,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(8),
@@ -230,7 +261,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     child: Column(
                       children: [
                         Text(
-                          nextClass['month']!,
+                          next_class['month']!,
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -240,7 +271,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          nextClass['date']!,
+                          next_class['date']!,
                           style: const TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -266,11 +297,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                         const SizedBox(height: 4),
                         Row(
                           children: [
-                            const Icon(
-                              Icons.schedule,
-                              size: 14,
-                              color: AppColors.secondary,
-                            ),
+                            const Icon(Icons.schedule, size: 14, color: AppColors.secondary),
                             const SizedBox(width: 4),
                             Text(
                               '${widget.course.start_time} - ${widget.course.end_time}',
@@ -293,11 +320,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               children: [
                 Row(
                   children: const [
-                    Icon(
-                      Icons.assignment,
-                      size: 20,
-                      color: AppColors.onSurface,
-                    ),
+                    Icon(Icons.assignment, size: 20, color: AppColors.onSurface),
                     SizedBox(width: 8),
                     Text(
                       'Recent Tasks',
@@ -321,14 +344,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             ),
             const SizedBox(height: 16),
             FutureBuilder<List<TaskModel>>(
-              future: _futureTasks,
+              future: _future_tasks,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text('Tidak ada tugas'));
+                  return const Center(child: Text('No tasks found'));
                 }
 
                 return ListView.builder(
@@ -342,7 +365,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       child: _buildRelatedTaskCard(
                         title: task.title,
                         desc: task.description ?? '',
-                        status: _formatStatus(task.deadline_date),
+                        status: _format_status(task.deadline_date),
                         accentColor: task.is_priority ? const Color(0xFFBA1A1A) : AppColors.primary,
                         bgColor: task.is_priority ? const Color(0xFFFFDAD6) : AppColors.surfaceContainerHigh,
                       ),
@@ -420,10 +443,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: bgColor,
                     borderRadius: BorderRadius.circular(4),

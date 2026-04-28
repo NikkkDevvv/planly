@@ -13,18 +13,18 @@ class EditCourseScreen extends StatefulWidget {
 }
 
 class _EditCourseScreenState extends State<EditCourseScreen> {
-  final CourseService _courseService = CourseService();
+  final CourseService _course_service = CourseService();
   
-  late TextEditingController _codeController;
-  late TextEditingController _nameController;
-  late TextEditingController _creditsController;
-  late TextEditingController _roomController;
-  late TextEditingController _lecturerController;
+  late TextEditingController _code_controller;
+  late TextEditingController _name_controller;
+  late TextEditingController _credits_controller;
+  late TextEditingController _room_controller;
+  late TextEditingController _lecturer_controller;
 
-  DateTime? _selectedDate;
-  TimeOfDay? _startTime;
-  TimeOfDay? _endTime;
-  bool _isLoading = false;
+  DateTime? _selected_date;
+  TimeOfDay? _start_time;
+  TimeOfDay? _end_time;
+  bool _is_loading = false;
 
   final List<String> _weekdays = [
     'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
@@ -33,38 +33,38 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
   @override
   void initState() {
     super.initState();
-    _codeController = TextEditingController(text: widget.course.course_code);
-    _nameController = TextEditingController(text: widget.course.name);
-    _creditsController = TextEditingController(text: widget.course.credits.toString());
-    _roomController = TextEditingController(text: widget.course.room);
-    _lecturerController = TextEditingController(text: widget.course.lecturer);
+    _code_controller = TextEditingController(text: widget.course.course_code);
+    _name_controller = TextEditingController(text: widget.course.name);
+    _credits_controller = TextEditingController(text: widget.course.credits.toString());
+    _room_controller = TextEditingController(text: widget.course.room);
+    _lecturer_controller = TextEditingController(text: widget.course.lecturer);
 
-    _startTime = _parseTimeString(widget.course.start_time);
-    _endTime = _parseTimeString(widget.course.end_time);
-    _selectedDate = _getNextDateFromDay(widget.course.day_of_week);
+    _start_time = _parse_time_string(widget.course.start_time);
+    _end_time = _parse_time_string(widget.course.end_time);
+    _selected_date = _get_next_date_from_day(widget.course.day_of_week);
   }
 
   @override
   void dispose() {
-    _codeController.dispose();
-    _nameController.dispose();
-    _creditsController.dispose();
-    _roomController.dispose();
-    _lecturerController.dispose();
+    _code_controller.dispose();
+    _name_controller.dispose();
+    _credits_controller.dispose();
+    _room_controller.dispose();
+    _lecturer_controller.dispose();
     super.dispose();
   }
 
-  TimeOfDay _parseTimeString(String timeString) {
-    final parts = timeString.split(':');
+  TimeOfDay _parse_time_string(String time_string) {
+    final parts = time_string.split(':');
     return TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
   }
 
-  DateTime _getNextDateFromDay(String dayName) {
+  DateTime _get_next_date_from_day(String day_name) {
     final days = {
       'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4,
       'friday': 5, 'saturday': 6, 'sunday': 7
     };
-    int target = days[dayName.toLowerCase()] ?? 1;
+    int target = days[day_name.toLowerCase()] ?? 1;
     DateTime now = DateTime.now();
     int current = now.weekday;
     int diff = target - current;
@@ -75,30 +75,30 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     return now.add(Duration(days: diff));
   }
 
-  String _formatTime(TimeOfDay time) {
+  String _format_time(TimeOfDay time) {
     final h = time.hour.toString().padLeft(2, '0');
     final m = time.minute.toString().padLeft(2, '0');
     return '$h:$m';
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pick_date() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
+      initialDate: _selected_date ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
     if (picked != null) {
       setState(() {
-        _selectedDate = picked;
+        _selected_date = picked;
       });
     }
   }
 
-  Future<void> _pickTime(bool isStart) async {
+  Future<void> _pick_time(bool is_start) async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: isStart ? (_startTime ?? TimeOfDay.now()) : (_endTime ?? TimeOfDay.now()),
+      initialTime: is_start ? (_start_time ?? TimeOfDay.now()) : (_end_time ?? TimeOfDay.now()),
       builder: (BuildContext context, Widget? child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
@@ -108,24 +108,24 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     );
     if (picked != null) {
       setState(() {
-        if (isStart) {
-          _startTime = picked;
+        if (is_start) {
+          _start_time = picked;
         } else {
-          _endTime = picked;
+          _end_time = picked;
         }
       });
     }
   }
 
-  Future<void> _updateCourse() async {
-    if (_codeController.text.isEmpty ||
-        _nameController.text.isEmpty ||
-        _creditsController.text.isEmpty ||
-        _roomController.text.isEmpty ||
-        _lecturerController.text.isEmpty ||
-        _selectedDate == null ||
-        _startTime == null ||
-        _endTime == null) {
+  Future<void> _update_course() async {
+    if (_code_controller.text.isEmpty ||
+        _name_controller.text.isEmpty ||
+        _credits_controller.text.isEmpty ||
+        _room_controller.text.isEmpty ||
+        _lecturer_controller.text.isEmpty ||
+        _selected_date == null ||
+        _start_time == null ||
+        _end_time == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill all fields')),
       );
@@ -133,26 +133,26 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     }
 
     setState(() {
-      _isLoading = true;
+      _is_loading = true;
     });
 
     try {
-      final String dayOfWeek = _weekdays[_selectedDate!.weekday - 1];
+      final String day_of_week = _weekdays[_selected_date!.weekday - 1];
 
-      final Map<String, dynamic> courseData = {
+      final Map<String, dynamic> course_data = {
         'user_id': widget.course.user_id,
-        'course_code': _codeController.text,
-        'name': _nameController.text,
-        'credits': int.parse(_creditsController.text),
-        'lecturer': _lecturerController.text,
-        'room': _roomController.text,
-        'day_of_week': dayOfWeek,
-        'start_time': _formatTime(_startTime!),
-        'end_time': _formatTime(_endTime!),
+        'course_code': _code_controller.text,
+        'course_name': _name_controller.text,
+        'sks': int.parse(_credits_controller.text),
+        'lecturer_name': _lecturer_controller.text,
+        'room': _room_controller.text,
+        'day_of_week': day_of_week,
+        'start_time': _format_time(_start_time!),
+        'end_time': _format_time(_end_time!),
         'color_hex': widget.course.color_hex,
       };
 
-      await _courseService.update_course(widget.course.id, courseData);
+      await _course_service.update_course(widget.course.id, course_data);
 
       if (mounted) {
         Navigator.pop(context, true);
@@ -166,7 +166,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _is_loading = false;
         });
       }
     }
@@ -236,11 +236,11 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildLabel('Code'),
+                            _build_label('Code'),
                             const SizedBox(height: 8),
                             TextField(
-                              controller: _codeController,
-                              decoration: _inputDecoration('#01'),
+                              controller: _code_controller,
+                              decoration: _input_decoration('#01'),
                             ),
                           ],
                         ),
@@ -251,11 +251,11 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildLabel('Course Name'),
+                            _build_label('Course Name'),
                             const SizedBox(height: 8),
                             TextField(
-                              controller: _nameController,
-                              decoration: _inputDecoration('e.g. Data Mining'),
+                              controller: _name_controller,
+                              decoration: _input_decoration('e.g. Data Mining'),
                             ),
                           ],
                         ),
@@ -269,12 +269,12 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildLabel('Credits / SKS'),
+                            _build_label('Credits / SKS'),
                             const SizedBox(height: 8),
                             TextField(
-                              controller: _creditsController,
+                              controller: _credits_controller,
                               keyboardType: TextInputType.number,
-                              decoration: _inputDecoration('3'),
+                              decoration: _input_decoration('3'),
                             ),
                           ],
                         ),
@@ -284,11 +284,11 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildLabel('Room / Location'),
+                            _build_label('Room / Location'),
                             const SizedBox(height: 8),
                             TextField(
-                              controller: _roomController,
-                              decoration: _inputDecoration('e.g. Lab AI'),
+                              controller: _room_controller,
+                              decoration: _input_decoration('e.g. Lab AI'),
                             ),
                           ],
                         ),
@@ -296,11 +296,11 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Lecturer Name'),
+                  _build_label('Lecturer Name'),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _lecturerController,
-                    decoration: _inputDecoration('e.g. Dr. Jane Smith'),
+                    controller: _lecturer_controller,
+                    decoration: _input_decoration('e.g. Dr. Jane Smith'),
                   ),
                   const SizedBox(height: 24),
                   const Divider(),
@@ -326,23 +326,23 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildLabel('Date'),
+                        _build_label('Date'),
                         const SizedBox(height: 8),
                         TextField(
                           readOnly: true,
                           controller: TextEditingController(
-                            text: _selectedDate == null
+                            text: _selected_date == null
                                 ? ''
-                                : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
+                                : "${_selected_date!.day}/${_selected_date!.month}/${_selected_date!.year}",
                           ),
-                          decoration: _inputDecoration('Select Date').copyWith(
+                          decoration: _input_decoration('Select Date').copyWith(
                             suffixIcon: const Icon(
                               Icons.calendar_today,
                               size: 18,
                               color: AppColors.outline,
                             ),
                           ),
-                          onTap: _pickDate,
+                          onTap: _pick_date,
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -351,21 +351,21 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildLabel('Start Time'),
+                                  _build_label('Start Time'),
                                   const SizedBox(height: 8),
                                   TextField(
                                     readOnly: true,
                                     controller: TextEditingController(
-                                      text: _startTime != null ? _formatTime(_startTime!) : '',
+                                      text: _start_time != null ? _format_time(_start_time!) : '',
                                     ),
-                                    decoration: _inputDecoration('Time').copyWith(
+                                    decoration: _input_decoration('Time').copyWith(
                                       suffixIcon: const Icon(
                                         Icons.schedule,
                                         size: 18,
                                         color: AppColors.outline,
                                       ),
                                     ),
-                                    onTap: () => _pickTime(true),
+                                    onTap: () => _pick_time(true),
                                   ),
                                 ],
                               ),
@@ -375,21 +375,21 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _buildLabel('End Time'),
+                                  _build_label('End Time'),
                                   const SizedBox(height: 8),
                                   TextField(
                                     readOnly: true,
                                     controller: TextEditingController(
-                                      text: _endTime != null ? _formatTime(_endTime!) : '',
+                                      text: _end_time != null ? _format_time(_end_time!) : '',
                                     ),
-                                    decoration: _inputDecoration('Time').copyWith(
+                                    decoration: _input_decoration('Time').copyWith(
                                       suffixIcon: const Icon(
                                         Icons.schedule,
                                         size: 18,
                                         color: AppColors.outline,
                                       ),
                                     ),
-                                    onTap: () => _pickTime(false),
+                                    onTap: () => _pick_time(false),
                                   ),
                                 ],
                               ),
@@ -404,7 +404,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: _isLoading ? null : () => Navigator.pop(context),
+                        onPressed: _is_loading ? null : () => Navigator.pop(context),
                         child: const Text(
                           'Cancel',
                           style: TextStyle(
@@ -415,7 +415,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                       ),
                       const SizedBox(width: 16),
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _updateCourse,
+                        onPressed: _is_loading ? null : _update_course,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryContainer,
                           foregroundColor: AppColors.primary,
@@ -428,7 +428,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: _isLoading
+                        child: _is_loading
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -450,7 +450,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
     );
   }
 
-  Widget _buildLabel(String text) => Text(
+  Widget _build_label(String text) => Text(
         text,
         style: const TextStyle(
           fontSize: 14,
@@ -459,7 +459,7 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
         ),
       );
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _input_decoration(String hint) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
@@ -471,11 +471,11 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.outlineVariant),
+        borderSide: const BorderSide(color: AppColors.outlineVariant), // Pakai borderSide
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5), // Pakai borderSide
       ),
     );
   }

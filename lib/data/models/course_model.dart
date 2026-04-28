@@ -30,12 +30,23 @@ class CourseModel {
       id: json['id'] ?? 0,
       user_id: json['user_id'] ?? 0,
       course_code: json['course_code'] ?? '',
-      name: json['name'] ?? '-',
-      credits: json['credits'] is String 
-          ? int.parse(json['credits']) 
-          : (json['credits'] ?? 0),
-      lecturer: json['lecturer'] ?? '-',
-      room: json['room'] ?? '-',
+      name: json['course_name'] ?? json['name'] ?? '-',
+      // Menangani sks yang bisa datang sebagai int atau string
+      credits: json['sks'] is int
+          ? json['sks']
+          : (json['credits'] is int
+                ? json['credits']
+                : int.tryParse(
+                        json['sks']?.toString() ??
+                            json['credits']?.toString() ??
+                            '0',
+                      ) ??
+                      0),
+      lecturer:
+          json['lecturer_name'] ??
+          json['lecturer'] ??
+          '-', // Menggunakan lecturer_name
+      room: json['room'] ?? '-', // Menggunakan room
       day_of_week: json['day_of_week'] ?? '',
       start_time: json['start_time'] ?? '',
       end_time: json['end_time'] ?? '',
@@ -48,10 +59,10 @@ class CourseModel {
       'id': id,
       'user_id': user_id,
       'course_code': course_code,
-      'name': name,
-      'credits': credits,
-      'lecturer': lecturer,
-      'room': room,
+      'course_name': name, 
+      'sks': credits, 
+      'lecturer_name': lecturer, 
+      'room': room, 
       'day_of_week': day_of_week,
       'start_time': start_time,
       'end_time': end_time,

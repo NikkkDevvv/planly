@@ -77,15 +77,17 @@ class CourseService {
     }
   }
 
-  Future<void> delete_course(int course_id) async {
+  Future<bool> delete_course(int course_id) async {
     final headers = await _getHeaders();
     final response = await http.delete(
       Uri.parse('$base_url/courses/$course_id'),
       headers: headers,
     );
 
-    if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Failed to delete course');
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      return true;
+    } else {
+      return false; 
     }
   }
 }

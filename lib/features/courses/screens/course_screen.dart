@@ -19,7 +19,6 @@ class _CoursesScreensState extends State<CoursesScreens> {
   @override
   void initState() {
     super.initState();
-    // Memanggil API tanpa parameter karena user_id biasanya diambil dari Token di Backend
     _futureCourses = _courseService.get_courses();
   }
 
@@ -31,11 +30,10 @@ class _CoursesScreensState extends State<CoursesScreens> {
       }
       return Color(int.parse(hexColor, radix: 16));
     } catch (e) {
-      return AppColors.primary; // Warna fallback jika hex rusak
+      return AppColors.primary;
     }
   }
 
-  // Fungsi untuk menghitung total SKS secara dinamis
   int _calculateTotalSKS(List<CourseModel> courses) {
     return courses.fold(0, (sum, item) => sum + item.credits);
   }
@@ -91,20 +89,25 @@ class _CoursesScreensState extends State<CoursesScreens> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // Header sekarang dinamis berdasarkan data API
                   Text(
                     '$totalSKS SKS Enrolled • ${courses.length} Courses',
-                    style: const TextStyle(fontSize: 14, color: AppColors.secondary),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.secondary,
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  
                   if (courses.isEmpty)
                     Center(
                       child: Padding(
                         padding: const EdgeInsets.only(top: 100),
                         child: Column(
                           children: [
-                            Icon(Icons.book_outlined, size: 64, color: AppColors.outline.withOpacity(0.5)),
+                            Icon(
+                              Icons.book_outlined,
+                              size: 64,
+                              color: AppColors.outline.withOpacity(0.5),
+                            ),
                             const SizedBox(height: 16),
                             const Text(
                               'No courses found.\nTap + to add your first course.',
@@ -132,9 +135,10 @@ class _CoursesScreensState extends State<CoursesScreens> {
                             courseCode: course.course_code,
                             courseName: course.name,
                             sks: '${course.credits} SKS',
-                            lecturer: course.lecturer,
-                            schedule: '${course.day_of_week}, ${course.start_time} - ${course.end_time}',
-                            location: course.room,
+                            lecturer: course.lecturer, // Menampilkan Nama Dosen
+                            schedule:
+                                '${course.day_of_week}, ${course.start_time} - ${course.end_time}',
+                            location: course.room, // Menampilkan Ruangan
                             accentColor: courseColor,
                             textColor: courseColor,
                           ),
@@ -148,6 +152,7 @@ class _CoursesScreensState extends State<CoursesScreens> {
         },
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: null, // Penting agar tidak Hero error
         onPressed: () async {
           final result = await Navigator.push(
             context,
@@ -162,9 +167,7 @@ class _CoursesScreensState extends State<CoursesScreens> {
         },
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 4,
         child: const Icon(Icons.add, size: 28),
       ),
@@ -191,7 +194,6 @@ class _CoursesScreensState extends State<CoursesScreens> {
             builder: (context) => CourseDetailScreen(course: course),
           ),
         );
-        // Refresh jika ada perubahan (Edit/Delete) dari layar detail
         if (result == true) {
           setState(() {
             _futureCourses = _courseService.get_courses();
@@ -245,7 +247,10 @@ class _CoursesScreensState extends State<CoursesScreens> {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: accentColor.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
@@ -277,7 +282,10 @@ class _CoursesScreensState extends State<CoursesScreens> {
                       const SizedBox(height: 4),
                       _buildCourseInfoRow(Icons.access_time, schedule),
                       const SizedBox(height: 4),
-                      _buildCourseInfoRow(Icons.location_on_outlined, location),
+                      _buildCourseInfoRow(
+                        Icons.location_on_outlined,
+                        location,
+                      ),
                     ],
                   ),
                 ),
@@ -300,7 +308,7 @@ class _CoursesScreensState extends State<CoursesScreens> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              fontSize: 13, 
+              fontSize: 13,
               color: AppColors.secondary,
               fontWeight: FontWeight.w400,
             ),
