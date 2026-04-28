@@ -127,8 +127,8 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    widget.note.courseId != null
-                        ? 'Course ID: ${widget.note.courseId}'
+                    widget.note.course_id != null
+                        ? 'Course ID: ${widget.note.course_id}'
                         : 'General',
                     style: const TextStyle(
                       fontSize: 12,
