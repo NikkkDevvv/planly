@@ -110,7 +110,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       final Map<String, dynamic> courseData = {
         'user_id': 1,
         'course_code': _codeController.text,
-        'name': _nameController.text,
+        'course_name': _nameController.text,
         'credits': int.parse(_creditsController.text),
         'lecturer': _lecturerController.text,
         'room': _roomController.text,

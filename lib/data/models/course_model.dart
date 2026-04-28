@@ -27,17 +27,19 @@ class CourseModel {
 
   factory CourseModel.fromJson(Map<String, dynamic> json) {
     return CourseModel(
-      id: json['id'],
-      user_id: json['user_id'],
-      course_code: json['course_code'],
-      name: json['name'],
-      credits: json['credits'],
-      lecturer: json['lecturer'],
-      room: json['room'],
-      day_of_week: json['day_of_week'],
-      start_time: json['start_time'],
-      end_time: json['end_time'],
-      color_hex: json['color_hex'],
+      id: json['id'] ?? 0,
+      user_id: json['user_id'] ?? 0,
+      course_code: json['course_code'] ?? '',
+      name: json['name'] ?? '-',
+      credits: json['credits'] is String 
+          ? int.parse(json['credits']) 
+          : (json['credits'] ?? 0),
+      lecturer: json['lecturer'] ?? '-',
+      room: json['room'] ?? '-',
+      day_of_week: json['day_of_week'] ?? '',
+      start_time: json['start_time'] ?? '',
+      end_time: json['end_time'] ?? '',
+      color_hex: json['color_hex'] ?? '#3498db',
     );
   }
 
