@@ -50,7 +50,7 @@ class _NoteDetailScreenState extends State<NoteDetailScreen> {
 
     if (confirm == true) {
       setState(() => _isDeleting = true);
-      await _noteService.deleteNote(widget.note.id);
+      await _noteService.delete_note(widget.note.id);
       if (mounted) {
         Navigator.pop(
           context,

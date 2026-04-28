@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/note_model.dart';
+import '../../../data/models/course_model.dart';
+import '../../courses/services/course_service.dart';
 import '../services/note_service.dart';
 
 class EditNoteScreen extends StatefulWidget {
-  final NoteModel note; // Menerima data catatan
+  final NoteModel note;
 
   const EditNoteScreen({super.key, required this.note});
 
@@ -15,15 +17,35 @@ class EditNoteScreen extends StatefulWidget {
 class _EditNoteScreenState extends State<EditNoteScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
+
   final NoteService _noteService = NoteService();
+  final CourseService _courseService = CourseService();
+
   bool _isLoading = false;
+  int? _selectedCourseId;
+  List<CourseModel> _courses = [];
 
   @override
   void initState() {
     super.initState();
-    // Mengisi input dengan data catatan yang sudah ada
     _titleController = TextEditingController(text: widget.note.title);
     _contentController = TextEditingController(text: widget.note.content);
+
+    // Set nilai awal dropdown sesuai dengan data catatan saat ini
+    _selectedCourseId = widget.note.course_id;
+
+    _loadCourses();
+  }
+
+  Future<void> _loadCourses() async {
+    try {
+      final courses = await _courseService.get_courses();
+      setState(() {
+        _courses = courses;
+      });
+    } catch (e) {
+      debugPrint('Error loading courses: $e');
+    }
   }
 
   Future<void> _updateNote() async {
@@ -40,20 +62,24 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     });
 
     Map<String, dynamic> noteData = {
-      'user_id': widget.note.user_id,
-      'course_id': widget.note.course_id,
+      'course_id': _selectedCourseId, // Menggunakan nilai dari dropdown
       'title': _titleController.text.trim(),
       'content': _contentController.text.trim(),
     };
 
-    await _noteService.updateNote(widget.note.id, noteData);
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      // Pop 2 kali atau pop dengan mengirim result agar bisa refresh halaman sebelumnya
-      Navigator.pop(context, true);
+    try {
+      await _noteService.update_note(widget.note.id, noteData);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
     }
   }
 
@@ -125,6 +151,24 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Dropdown untuk memilih Mata Kuliah
+            DropdownButtonFormField<int>(
+              value: _selectedCourseId,
+              hint: const Text('Select Course (Optional)'),
+              decoration: const InputDecoration(border: OutlineInputBorder()),
+              items: _courses.map((course) {
+                return DropdownMenuItem<int>(
+                  value: course.id,
+                  child: Text(course.name),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCourseId = value;
+                });
+              },
+            ),
+            const SizedBox(height: 24),
             TextField(
               controller: _titleController,
               style: const TextStyle(

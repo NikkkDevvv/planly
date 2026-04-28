@@ -19,13 +19,12 @@ class _NotesScreensState extends State<NotesScreens> {
   @override
   void initState() {
     super.initState();
-    // Gunakan parameter 1 sebagai simulasi user_id yang sedang login
-    _futureNotes = _noteService.getAllNotes(1);
+    _futureNotes = _noteService.get_notes();
   }
 
   void _refreshNotes() {
     setState(() {
-      _futureNotes = _noteService.getAllNotes(1);
+      _futureNotes = _noteService.get_notes();
     });
   }
 
@@ -96,27 +95,34 @@ class _NotesScreensState extends State<NotesScreens> {
 
                   final notes = snapshot.data!;
 
-                  return ListView.builder(
-                    padding: const EdgeInsets.only(
-                      bottom: 96,
-                    ), // Ruang untuk FAB
-                    itemCount: notes.length,
-                    itemBuilder: (context, index) {
-                      final note = notes[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 16.0),
-                        child: _buildNoteCard(
-                          context,
-                          note: note,
-                          tag: note.course_id != null
-                              ? 'Course ID: ${note.course_id}'
-                              : 'General',
-                          date: 'Recent', // Fallback
-                          title: note.title,
-                          content: note.content,
-                        ),
-                      );
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      _refreshNotes();
                     },
+                    child: ListView.builder(
+                      physics:
+                          const AlwaysScrollableScrollPhysics(), // Wajib agar bisa ditarik ke bawah
+                      padding: const EdgeInsets.only(
+                        bottom: 96,
+                      ), // Ruang untuk FAB
+                      itemCount: notes.length,
+                      itemBuilder: (context, index) {
+                        final note = notes[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 16.0),
+                          child: _buildNoteCard(
+                            context,
+                            note: note,
+                            tag: note.course_id != null
+                                ? 'Course ID: ${note.course_id}'
+                                : 'General',
+                            date: 'Recent', // Fallback
+                            title: note.title,
+                            content: note.content,
+                          ),
+                        );
+                      },
+                    ),
                   );
                 },
               ),
@@ -147,7 +153,7 @@ class _NotesScreensState extends State<NotesScreens> {
   // Widget pembantu untuk merender Kartu Catatan
   Widget _buildNoteCard(
     BuildContext context, {
-    required NoteModel note, // Meneruskan data NoteModel utuh
+    required NoteModel note,
     required String tag,
     Color tagBgColor = AppColors.surfaceContainerHigh,
     Color tagTextColor = AppColors.onSurface,
