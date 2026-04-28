@@ -1,10 +1,10 @@
 class UserModel {
   final int id;
-  final String name;
-  final String email;
-  final String? nim;
-  final String? major;
-  final int? semester;
+  final String name; // ← Tampil di profile
+  final String email; // ← Tampil di profile
+  final String? nim; // ← Tampil di profile
+  final String? major; // ← Tampil di profile
+  final int? semester; // ← Tampil di profile
   final String? profile_photo_url;
 
   UserModel({
@@ -19,13 +19,15 @@ class UserModel {
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      nim: json['nim'],
+      id: json['id'] ?? 0, // Fallback ke 0 jika id null
+      name: json['name'] ?? 'Guest User', // Fallback jika nama null
+      email: json['email'] ?? '-',
+      nim: json['nim']?.toString(), // Pastikan dikonversi ke string
       major: json['major'],
-      semester: json['semester'],
-      profile_photo_url: json['profile_photo_url'],
+      semester: json['semester'] is int
+          ? json['semester']
+          : int.tryParse(json['semester']?.toString() ?? ''),
+      profile_photo_url: json['profile_photo_url'] ?? json['foto'],
     );
   }
 

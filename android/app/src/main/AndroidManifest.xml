@@ -6,7 +6,6 @@
         android:label="planly"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        /* TAMBAHKAN BARIS INI (Supaya bisa panggil HTTP, bukan cuma HTTPS) */
         android:usesCleartextTraffic="true">
         
         <activity
