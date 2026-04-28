@@ -40,20 +40,22 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     });
 
     Map<String, dynamic> noteData = {
-      'user_id': widget.note.user_id,
       'course_id': widget.note.course_id,
       'title': _titleController.text.trim(),
       'content': _contentController.text.trim(),
     };
 
-    await _noteService.updateNote(widget.note.id, noteData);
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      // Pop 2 kali atau pop dengan mengirim result agar bisa refresh halaman sebelumnya
-      Navigator.pop(context, true);
+    try {
+      await _noteService.update_note(widget.note.id, noteData);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 

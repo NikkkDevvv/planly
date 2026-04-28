@@ -30,20 +30,22 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
 
     // Simulasi data untuk dikirim ke backend
     Map<String, dynamic> noteData = {
-      'user_id': 1, // Simulasi User ID
-      'course_id':
-          null, // Boleh diisi integer jika ada fitur pilih course nantinya
+      'course_id': null,
       'title': _titleController.text.trim(),
       'content': _contentController.text.trim(),
     };
 
-    await _noteService.createNote(noteData);
-
-    if (mounted) {
-      setState(() {
-        _isLoading = false;
-      });
-      Navigator.pop(context); // Kembali ke halaman sebelumnya
+    try {
+      await _noteService.create_note(noteData);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     }
   }
 
