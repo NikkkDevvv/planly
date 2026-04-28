@@ -1,116 +1,170 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/models/course_model.dart';
+import '../../courses/services/course_service.dart';
+import 'package:intl/intl.dart';
 
-class ScheduleScreens extends StatelessWidget {
+class ScheduleScreens extends StatefulWidget {
   const ScheduleScreens({super.key});
+
+  @override
+  State<ScheduleScreens> createState() => _ScheduleScreensState();
+}
+
+class _ScheduleScreensState extends State<ScheduleScreens> {
+  final CourseService _courseService = CourseService();
+  late DateTime _selectedDate;
+  late List<DateTime> _weekDates;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDate = DateTime.now();
+    _generateWeekDates();
+  }
+
+  void _generateWeekDates() {
+    // Menghasilkan 7 hari dimulai dari hari ini
+    _weekDates = List.generate(7, (index) => DateTime.now().add(Duration(days: index)));
+  }
+
+  String _getDayName(DateTime date) {
+    return DateFormat('EEEE').format(date); // Mengambil nama hari (Monday, Tuesday, dst)
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(
-          top: 24,
-          bottom: 96,
-          left: 24,
-          right: 24,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Date Picker Header
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: const [
-                Text(
-                  'October',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface,
-                  ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      DateFormat('MMMM').format(_selectedDate), // Nama Bulan Otomatis
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.onSurface,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedDate = DateTime.now();
+                        });
+                      },
+                      child: const Text(
+                        'Today',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                Text(
-                  'Today',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
+                const SizedBox(height: 16),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: _weekDates.map((date) {
+                      bool isActive = date.day == _selectedDate.day &&
+                          date.month == _selectedDate.month;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 12),
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedDate = date;
+                            });
+                          },
+                          child: _buildDateItem(
+                            day: DateFormat('E').format(date),
+                            date: date.day.toString(),
+                            isActive: isActive,
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+          ),
+          const SizedBox(height: 32),
+          Expanded(
+            child: FutureBuilder<List<CourseModel>>(
+              future: _courseService.get_courses(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-            // Date Picker Strip (Horizontal Scroll)
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildDateItem(day: 'Mon', date: '16', isActive: false),
-                  const SizedBox(width: 8),
-                  _buildDateItem(day: 'Tue', date: '17', isActive: true),
-                  const SizedBox(width: 8),
-                  _buildDateItem(day: 'Wed', date: '18', isActive: false),
-                  const SizedBox(width: 8),
-                  _buildDateItem(day: 'Thu', date: '19', isActive: false),
-                  const SizedBox(width: 8),
-                  _buildDateItem(day: 'Fri', date: '20', isActive: false),
-                  const SizedBox(width: 8),
-                  _buildDateItem(day: 'Sat', date: '21', isActive: false),
-                  const SizedBox(width: 8),
-                  _buildDateItem(day: 'Sun', date: '22', isActive: false),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
+                // Filter jadwal berdasarkan hari yang dipilih
+                final selectedDayName = _getDayName(_selectedDate).toLowerCase();
+                final dailyCourses = snapshot.data?.where((course) => 
+                  course.day_of_week.toLowerCase() == selectedDayName
+                ).toList() ?? [];
 
-            // Schedule List
-            _buildScheduleCard(
-              tag: 'Core Design',
-              tagColor: const Color(0xFFE2DFFF), // primary-fixed
-              tagTextColor: const Color(0xFF0F0069),
-              title: 'Interaction Design Principles',
-              lecturer: 'Prof. Sarah Jenkins',
-              time: '09:00 - 10:30 AM',
-              location: 'Room 402, Building A',
-              accentColor: AppColors.primary,
-              isPast: false,
-            ),
-            const SizedBox(height: 16),
+                if (dailyCourses.isEmpty) {
+                  return _buildEmptyState();
+                }
 
-            _buildScheduleCard(
-              tag: 'Workshop',
-              tagColor: const Color(0xFFD3E4FE), // secondary-fixed
-              tagTextColor: const Color(0xFF38485D),
-              title: 'Prototyping Lab',
-              lecturer: 'David Chen, TA',
-              time: '11:00 - 13:00 PM',
-              location: 'Design Studio 2',
-              accentColor: const Color(0xFFD3E4FE),
-              isPast: false,
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 96),
+                  itemCount: dailyCourses.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: 16),
+                  itemBuilder: (context, index) {
+                    final course = dailyCourses[index];
+                    return _buildScheduleCard(
+                      tag: 'Course',
+                      tagColor: AppColors.primaryContainer,
+                      tagTextColor: AppColors.primary,
+                      title: course.name,
+                      lecturer: course.lecturer,
+                      time: '${course.start_time} - ${course.end_time}',
+                      location: course.room,
+                      accentColor: Color(int.parse(course.color_hex.replaceAll('#', '0xFF'))),
+                      isPast: false, 
+                    );
+                  },
+                );
+              },
             ),
-            const SizedBox(height: 16),
-
-            _buildScheduleCard(
-              tag: 'Elective',
-              tagColor: const Color(0xFFDFE3E7), // tertiary-fixed
-              tagTextColor: const Color(0xFF171C1F),
-              title: 'History of Typography',
-              lecturer: 'Dr. Elena Rostova',
-              time: '14:30 - 16:00 PM',
-              location: 'Lecture Hall B',
-              accentColor: const Color(0xFFDFE3E7),
-              isPast: true, // Akan memberikan efek opacity redup
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 
-  // Widget pembantu untuk Date Item
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.event_busy, size: 64, color: AppColors.outline.withOpacity(0.5)),
+          const SizedBox(height: 16),
+          const Text(
+            "No classes for this day",
+            style: TextStyle(color: AppColors.secondary, fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildDateItem({
     required String day,
     required String date,
@@ -120,20 +174,11 @@ class ScheduleScreens extends StatelessWidget {
       width: 56,
       height: 80,
       decoration: BoxDecoration(
-        color: isActive ? AppColors.primary : AppColors.surface,
+        color: isActive ? AppColors.primary : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: isActive
             ? null
             : Border.all(color: AppColors.outlineVariant.withOpacity(0.3)),
-        boxShadow: isActive
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withOpacity(0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ]
-            : null,
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -142,10 +187,8 @@ class ScheduleScreens extends StatelessWidget {
             day.toUpperCase(),
             style: TextStyle(
               fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isActive
-                  ? Colors.white.withOpacity(0.9)
-                  : AppColors.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
+              color: isActive ? Colors.white70 : AppColors.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 4),
@@ -153,7 +196,7 @@ class ScheduleScreens extends StatelessWidget {
             date,
             style: TextStyle(
               fontSize: 20,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
               color: isActive ? Colors.white : AppColors.onSurface,
             ),
           ),
@@ -162,7 +205,6 @@ class ScheduleScreens extends StatelessWidget {
     );
   }
 
-  // Widget pembantu untuk Kartu Jadwal
   Widget _buildScheduleCard({
     required String tag,
     required Color tagColor,
@@ -174,119 +216,74 @@ class ScheduleScreens extends StatelessWidget {
     required Color accentColor,
     required bool isPast,
   }) {
-    return Opacity(
-      opacity: isPast ? 0.6 : 1.0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.02),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+      ),
+      child: IntrinsicHeight(
+        child: Row(
+          children: [
+            Container(
+              width: 5,
+              decoration: BoxDecoration(
+                color: accentColor,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  bottomLeft: Radius.circular(16),
+                ),
+              ),
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(left: BorderSide(color: accentColor, width: 4)),
-            ),
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: tagColor,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    tag,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: tagTextColor,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  lecturer,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: AppColors.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Divider(height: 1),
-                const SizedBox(height: 12),
-                Row(
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.schedule,
-                            size: 18,
-                            color: AppColors.onSurfaceVariant,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: tagColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            time,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.onSurfaceVariant,
-                            ),
+                          child: Text(
+                            tag,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: tagTextColor),
                           ),
-                        ],
-                      ),
+                        ),
+                        Text(
+                          time,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.secondary),
+                        ),
+                      ],
                     ),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            size: 18,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              location,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                    const SizedBox(height: 8),
+                    Text(
+                      title,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.onSurface),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      lecturer,
+                      style: const TextStyle(fontSize: 14, color: AppColors.secondary),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        const Icon(Icons.location_on_outlined, size: 14, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(location, style: const TextStyle(fontSize: 12, color: AppColors.onSurface)),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
       ),
     );

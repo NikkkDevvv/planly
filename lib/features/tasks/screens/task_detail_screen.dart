@@ -61,14 +61,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     setState(() => _isLoading = true);
     try {
       final Map<String, dynamic> updatedData = {
-        'user_id': widget.task.userId,
-        'course_id': widget.task.courseId,
+        'user_id': widget.task.user_id,
+        'course_id': widget.task.course_id,
         'title': widget.task.title,
         'description': widget.task.description,
-        'deadline_date': widget.task.deadlineDate,
-        'deadline_time': widget.task.deadlineTime,
+        'deadline_date': widget.task.deadline_date,
+        'deadline_time': widget.task.deadline_time,
         'status': 'done', // Ubah status menjadi done
-        'is_priority': widget.task.isPriority,
+        'is_priority': widget.task.is_priority,
       };
 
       await _taskService.update_task(widget.task.id, updatedData);
@@ -88,7 +88,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isDone = widget.task.status.toLowerCase() == 'done';
-    final bool isOverdue = _isOverdue(widget.task.deadlineDate);
+    final bool isOverdue = _isOverdue(widget.task.deadline_date);
     
     Color statusColor = AppColors.primary;
     Color statusBgColor = AppColors.primaryContainer;
@@ -102,7 +102,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       statusColor = const Color(0xFFBA1A1A);
       statusBgColor = const Color(0xFFFFDAD6);
       statusText = 'Overdue';
-    } else if (widget.task.isPriority) {
+    } else if (widget.task.is_priority) {
       statusText = 'High Priority';
     } else {
       statusColor = AppColors.onSurfaceVariant;
@@ -239,7 +239,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      widget.task.courseId != null ? 'Course ID: ${widget.task.courseId}' : 'General Task',
+                      widget.task.course_id != null ? 'Course ID: ${widget.task.course_id}' : 'General Task',
                       style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
@@ -282,7 +282,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _formatDateTime(widget.task.deadlineDate, widget.task.deadlineTime),
+                            _formatDateTime(widget.task.deadline_date, widget.task.deadline_time),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,

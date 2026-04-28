@@ -342,9 +342,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       child: _buildRelatedTaskCard(
                         title: task.title,
                         desc: task.description ?? '',
-                        status: _formatStatus(task.deadlineDate),
-                        accentColor: task.isPriority ? const Color(0xFFBA1A1A) : AppColors.primary,
-                        bgColor: task.isPriority ? const Color(0xFFFFDAD6) : AppColors.surfaceContainerHigh,
+                        status: _formatStatus(task.deadline_date),
+                        accentColor: task.is_priority ? const Color(0xFFBA1A1A) : AppColors.primary,
+                        bgColor: task.is_priority ? const Color(0xFFFFDAD6) : AppColors.surfaceContainerHigh,
                       ),
                     );
                   },

@@ -19,7 +19,7 @@ class _TasksScreensState extends State<TasksScreens> {
   @override
   void initState() {
     super.initState();
-    _futureTasks = _taskService.get_all_tasks(1);
+    _futureTasks = _taskService.get_all_tasks();
   }
 
   String _formatTimeDisplay(String dateStr, String timeStr) {
@@ -112,12 +112,12 @@ class _TasksScreensState extends State<TasksScreens> {
                         itemCount: pendingTasks.length,
                         itemBuilder: (context, index) {
                           final task = pendingTasks[index];
-                          bool isOverdue = _isOverdue(task.deadlineDate);
+                          bool isOverdue = _isOverdue(task.deadline_date);
                           
                           String? statusLabel;
                           if (isOverdue) {
                             statusLabel = 'Overdue';
-                          } else if (task.isPriority) {
+                          } else if (task.is_priority) {
                             statusLabel = 'High Priority';
                           }
 
@@ -127,11 +127,11 @@ class _TasksScreensState extends State<TasksScreens> {
                               context,
                               task: task,
                               title: task.title,
-                              category: 'Course ID: ${task.courseId ?? 'General'}',
-                              time: _formatTimeDisplay(task.deadlineDate, task.deadlineTime),
+                              category: 'Course ID: ${task.course_id ?? 'General'}',
+                              time: _formatTimeDisplay(task.deadline_date, task.deadline_time),
                               statusLabel: statusLabel,
                               isOverdue: isOverdue,
-                              isPriority: task.isPriority,
+                              isPriority: task.is_priority,
                               isDone: false,
                             ),
                           );
@@ -148,8 +148,8 @@ class _TasksScreensState extends State<TasksScreens> {
                               context,
                               task: task,
                               title: task.title,
-                              category: 'Course ID: ${task.courseId ?? 'General'}',
-                              time: _formatTimeDisplay(task.deadlineDate, task.deadlineTime),
+                              category: 'Course ID: ${task.course_id ?? 'General'}',
+                              time: _formatTimeDisplay(task.deadline_date, task.deadline_time),
                               isDone: true,
                             ),
                           );

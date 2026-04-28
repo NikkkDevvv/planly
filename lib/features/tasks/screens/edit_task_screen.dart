@@ -28,17 +28,17 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     super.initState();
     _titleController = TextEditingController(text: widget.task.title);
     _descController = TextEditingController(text: widget.task.description ?? '');
-    _selectedCourseId = widget.task.courseId;
+    _selectedCourseId = widget.task.course_id;
     _isPending = widget.task.status.toLowerCase() != 'done';
     
     try {
-      _selectedDate = DateTime.parse(widget.task.deadlineDate);
+      _selectedDate = DateTime.parse(widget.task.deadline_date);
     } catch (e) {
       _selectedDate = null;
     }
     
     try {
-      final parts = widget.task.deadlineTime.split(':');
+      final parts = widget.task.deadline_time.split(':');
       _selectedTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
     } catch (e) {
       _selectedTime = null;
@@ -98,14 +98,14 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
 
     try {
       final Map<String, dynamic> taskData = {
-        'user_id': widget.task.userId,
+        'user_id': widget.task.user_id,
         'course_id': _selectedCourseId,
         'title': _titleController.text,
         'description': _descController.text,
         'deadline_date': _formatDate(_selectedDate!),
         'deadline_time': _formatTime(_selectedTime!),
         'status': _isPending ? 'pending' : 'done',
-        'is_priority': widget.task.isPriority,
+        'is_priority': widget.task.is_priority,
       };
 
       await _taskService.update_task(widget.task.id, taskData);
