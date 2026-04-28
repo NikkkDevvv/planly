@@ -119,8 +119,33 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
             const Divider(),
             TextField(
               controller: _contentController,
-              maxLines: null,
-              decoration: const InputDecoration(hintText: 'Content'),
+              maxLines: 1000,
+              minLines: 15,
+              keyboardType: TextInputType.multiline,
+              textAlignVertical: TextAlignVertical.top,
+              style: const TextStyle(
+                fontSize: 16,
+                color: AppColors.onSurface,
+                height: 1.6,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Start typing your notes here...',
+                hintStyle: TextStyle(
+                  color: AppColors.outline.withOpacity(0.7),
+                  fontSize: 16,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: AppColors.outlineVariant.withOpacity(0.5),
+                  ),
+                ),
+                contentPadding: const EdgeInsets.all(16),
+              ),
             ),
           ],
         ),

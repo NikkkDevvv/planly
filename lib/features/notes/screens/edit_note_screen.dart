@@ -193,8 +193,10 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
             ),
             TextField(
               controller: _contentController,
-              maxLines: null,
+              maxLines: 1000,
+              minLines: 15,
               keyboardType: TextInputType.multiline,
+              textAlignVertical: TextAlignVertical.top,
               style: const TextStyle(
                 fontSize: 16,
                 color: AppColors.onSurface,
@@ -206,8 +208,17 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
                   color: AppColors.outline.withOpacity(0.7),
                   fontSize: 16,
                 ),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppColors.outlineVariant),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: AppColors.outlineVariant.withOpacity(0.5),
+                  ),
+                ),
+                contentPadding: const EdgeInsets.all(16),
               ),
             ),
           ],

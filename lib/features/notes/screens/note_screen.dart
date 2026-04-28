@@ -16,6 +16,9 @@ class _NotesScreensState extends State<NotesScreens> {
   final NoteService _noteService = NoteService();
   late Future<List<NoteModel>> _futureNotes;
 
+  // Variabel untuk menyimpan kata kunci pencarian
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -51,8 +54,13 @@ class _NotesScreensState extends State<NotesScreens> {
                   ),
                 ],
               ),
-              child: const TextField(
-                decoration: InputDecoration(
+              child: TextField(
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: const InputDecoration(
                   hintText: 'Search notes...',
                   hintStyle: TextStyle(color: AppColors.outline, fontSize: 14),
                   prefixIcon: Icon(Icons.search, color: AppColors.outline),
@@ -95,19 +103,36 @@ class _NotesScreensState extends State<NotesScreens> {
 
                   final notes = snapshot.data!;
 
+                  // Menyaring daftar catatan berdasarkan pencarian (Case Insensitive)
+                  final filteredNotes = notes.where((note) {
+                    final titleLower = note.title.toLowerCase();
+                    final contentLower = note.content.toLowerCase();
+                    final searchLower = _searchQuery.toLowerCase();
+
+                    return titleLower.contains(searchLower) ||
+                        contentLower.contains(searchLower);
+                  }).toList();
+
+                  // Jika hasil pencarian kosong
+                  if (filteredNotes.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No notes match your search.',
+                        style: TextStyle(color: AppColors.secondary),
+                      ),
+                    );
+                  }
+
                   return RefreshIndicator(
                     onRefresh: () async {
                       _refreshNotes();
                     },
                     child: ListView.builder(
-                      physics:
-                          const AlwaysScrollableScrollPhysics(), // Wajib agar bisa ditarik ke bawah
-                      padding: const EdgeInsets.only(
-                        bottom: 96,
-                      ), // Ruang untuk FAB
-                      itemCount: notes.length,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.only(bottom: 96),
+                      itemCount: filteredNotes.length,
                       itemBuilder: (context, index) {
-                        final note = notes[index];
+                        final note = filteredNotes[index];
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 16.0),
                           child: _buildNoteCard(
@@ -116,7 +141,7 @@ class _NotesScreensState extends State<NotesScreens> {
                             tag: note.course_id != null
                                 ? 'Course ID: ${note.course_id}'
                                 : 'General',
-                            date: 'Recent', // Fallback
+                            date: 'Recent',
                             title: note.title,
                             content: note.content,
                           ),
@@ -130,12 +155,10 @@ class _NotesScreensState extends State<NotesScreens> {
           ],
         ),
       ),
-      // Floating Action Button
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: FloatingActionButton(
           onPressed: () {
-            // Navigasi ke halaman Add dan Refresh data saat kembali
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AddNoteScreen()),
@@ -150,7 +173,6 @@ class _NotesScreensState extends State<NotesScreens> {
     );
   }
 
-  // Widget pembantu untuk merender Kartu Catatan
   Widget _buildNoteCard(
     BuildContext context, {
     required NoteModel note,
@@ -230,7 +252,7 @@ class _NotesScreensState extends State<NotesScreens> {
             const SizedBox(height: 8),
             Text(
               content,
-              maxLines: 4, // Membatasi preview catatan
+              maxLines: 4,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 14,

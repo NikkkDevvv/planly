@@ -15,11 +15,11 @@ class NoteModel {
 
   factory NoteModel.fromJson(Map<String, dynamic> json) {
     return NoteModel(
-      id: json['id'],
-      user_id: json['user_id'],
+      id: json['id'] ?? 0,
+      user_id: json['user_id'] ?? 0,
       course_id: json['course_id'],
-      title: json['title'],
-      content: json['content'],
+      title: json['title'] ?? '',
+      content: json['content'] ?? '',
     );
   }
 
