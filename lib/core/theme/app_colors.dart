@@ -1,34 +1,48 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Primary
-  static const Color primary = Color(0xFF6750A4);
-  static const Color primaryContainer = Color(0xFFEADDFF);
-  static const Color onPrimaryContainer = Color(0xFF21005D);
+  // Warna Utama (Input User)
+  static const Color primary = Color(0xFF4F46E5);
+  static const Color secondary = Color(0xFF64748B);
+  static const Color tertiary = Color(0xFFF1F5F9);
+  static const Color neutral = Color(0xFF1E293B);
 
-  // Secondary
-  static const Color secondary = Color(0xFF625B71);
-  static const Color secondaryContainer = Color(0xFFE8DEF8);
-  static const Color onSecondaryContainer = Color(0xFF1D192B);
+  // Variabel Pendukung (Sync dengan main_layout & home_screens)
+  static const Color surface = Color(0xFFF8FAFC); // Latar belakang aplikasi
+  static const Color onSurface = Color(0xFF1E293B); // Teks utama (neutral)
+  static const Color onSurfaceVariant = Color(
+    0xFF64748B,
+  ); // Teks sekunder (secondary)
 
-  // Surface
-  static const Color surface = Color(0xFFFEF7FF);
-  static const Color onSurface = Color(0xFF1D1B20);
-  static const Color onSurfaceVariant = Color(0xFF49454F);
+  static const Color surfaceContainerLowest = Color(
+    0xFFFFFFFF,
+  ); // Background kartu putih
+  static const Color surfaceContainerLow = Color(
+    0xFFF1F5F9,
+  ); // Background break/item (tertiary)
+  static const Color surfaceContainerHigh = Color(
+    0xFFE2E8F0,
+  ); // Background bento card
+  static const Color surfaceBright = Color(
+    0xFFF8FAFC,
+  ); // Background input field
 
-  // Surface Containers
-  static const Color surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const Color surfaceContainerLow = Color(0xFFF7F2FA);
-  static const Color surfaceContainer = Color(0xFFF3EDF7);
-  static const Color surfaceContainerHigh = Color(0xFFECE6F0);
-  static const Color surfaceContainerHighest = Color(0xFFE6E0E9);
-  static const Color surfaceBright = Color(0xFFFEF7FF);
+  static const Color primaryContainer = Color(
+    0xFFE0E7FF,
+  ); // Background indigo muda
+  static const Color secondaryContainer = Color(
+    0xFFF1F5F9,
+  ); // Background abu-abu muda
 
-  // Outline
-  static const Color outline = Color(0xFF79747E);
-  static const Color outlineVariant = Color(0xFFCAC4D0);
+  static const Color outline = Color(
+    0xFF94A3B8,
+  ); // Warna placeholder/ikon redup
+  static const Color outlineVariant = Color(
+    0xFFE2E8F0,
+  ); // Warna border/garis pemisah
 
-  // Error
-  static const Color error = Color(0xFFB3261E);
-  static const Color onError = Color(0xFFFFFFFF);
+  // Warna Teks di atas warna utama
+  static const Color onPrimary = Color(0xFFFFFFFF);
+  static const Color onPrimaryFixed = Color(0xFF1E293B);
+  static const Color onPrimaryFixedVariant = Color(0xFF4F46E5);
 }

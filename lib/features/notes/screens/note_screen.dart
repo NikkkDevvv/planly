@@ -1,24 +1,40 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-
-// [TESTING DOC] Import halaman tujuan navigasi
+import '../../auth/models/note_model.dart';
+import '../services/note_service.dart';
 import 'add_note_screen.dart';
 import 'note_detail_screen.dart';
 
-class NotesScreens extends StatelessWidget {
+class NotesScreens extends StatefulWidget {
   const NotesScreens({super.key});
+
+  @override
+  State<NotesScreens> createState() => _NotesScreensState();
+}
+
+class _NotesScreensState extends State<NotesScreens> {
+  final NoteService _noteService = NoteService();
+  late Future<List<NoteModel>> _futureNotes;
+
+  @override
+  void initState() {
+    super.initState();
+    // Gunakan parameter 1 sebagai simulasi user_id yang sedang login
+    _futureNotes = _noteService.getAllNotes(1);
+  }
+
+  void _refreshNotes() {
+    setState(() {
+      _futureNotes = _noteService.getAllNotes(1);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(
-          top: 24,
-          bottom: 96,
-          left: 24,
-          right: 24,
-        ),
+      body: Padding(
+        padding: const EdgeInsets.only(top: 48, left: 24, right: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -51,72 +67,59 @@ class NotesScreens extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Note Card 1 (Important)
-            _buildNoteCard(
-              context, // [TESTING DOC] Passing context untuk navigasi
-              tag: 'Advanced Physics 301',
-              date: 'Oct 24',
-              title: 'Quantum Entanglement Basics',
-              content:
-                  'The fundamental concept relies on two particles interacting such that the quantum state of each particle cannot be described independently of the state of the other(s), even when the particles are separated by a large distance...',
-              footer: Row(
-                children: [
-                  _buildFooterIconText(Icons.attachment, '2 files'),
-                  const SizedBox(width: 16),
-                  _buildFooterIconText(Icons.label, 'Midterm'),
-                ],
+            // Menampilkan List Catatan
+            Expanded(
+              child: FutureBuilder<List<NoteModel>>(
+                future: _futureNotes,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: AppColors.primary,
+                      ),
+                    );
+                  } else if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: AppColors.secondary),
+                      ),
+                    );
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No notes available. Create one!',
+                        style: TextStyle(color: AppColors.secondary),
+                      ),
+                    );
+                  }
+
+                  final notes = snapshot.data!;
+
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(
+                      bottom: 96,
+                    ), // Ruang untuk FAB
+                    itemCount: notes.length,
+                    itemBuilder: (context, index) {
+                      final note = notes[index];
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 16.0),
+                        child: _buildNoteCard(
+                          context,
+                          note: note,
+                          tag: note.courseId != null
+                              ? 'Course ID: ${note.courseId}'
+                              : 'General',
+                          date: 'Recent', // Fallback
+                          title: note.title,
+                          content: note.content,
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-            ),
-            const SizedBox(height: 16),
-
-            // Note Card 2
-            _buildNoteCard(
-              context,
-              tag: 'Design History',
-              tagBgColor: AppColors.secondaryContainer,
-              tagTextColor: const Color(0xFF54647A),
-              date: 'Oct 22',
-              title: 'Bauhaus Movement',
-              content:
-                  'Form follows function. The integration of art, craft, and technology. Walter Gropius founded it in Weimar in 1919. Minimalist, geometric, and functional design principles.',
-            ),
-            const SizedBox(height: 16),
-
-            // Note Card 3 (Review Needed)
-            _buildNoteCard(
-              context,
-              tag: 'Computer Science',
-              date: 'Oct 20',
-              title: 'Data Structures: Trees',
-              content:
-                  'Binary Search Trees (BST), AVL Trees, Red-Black Trees. Important to balance them for O(log n) search time. Need to review the re-balancing logic for AVL insertions.',
-              footer: _buildFooterIconText(
-                Icons.priority_high,
-                'Review needed',
-                color: const Color(0xFFBA1A1A),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Note Card 4
-            _buildNoteCard(
-              context,
-              tag: 'Literature',
-              date: 'Oct 18',
-              title: 'Modernist Poetry',
-              content:
-                  'T.S. Eliot - The Waste Land. Fragmentation, allusion, multiple voices. Departure from traditional forms.',
-            ),
-            const SizedBox(height: 16),
-
-            // Note Card 5
-            _buildNoteCard(
-              context,
-              tag: 'Project Management',
-              date: 'Oct 15',
-              title: 'Agile Methodologies',
-              content:
-                  'Scrum framework: Sprints, Daily Standups, Sprint Review, Retrospective. Roles: Scrum Master, Product Owner, Development Team. Emphasis on iterative progress and adaptability.',
             ),
           ],
         ),
@@ -126,11 +129,11 @@ class NotesScreens extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 16.0),
         child: FloatingActionButton(
           onPressed: () {
-            // [TESTING DOC] Navigasi ke halaman Tambah Catatan
+            // Navigasi ke halaman Add dan Refresh data saat kembali
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AddNoteScreen()),
-            );
+            ).then((_) => _refreshNotes());
           },
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -144,21 +147,20 @@ class NotesScreens extends StatelessWidget {
   // Widget pembantu untuk merender Kartu Catatan
   Widget _buildNoteCard(
     BuildContext context, {
+    required NoteModel note, // Meneruskan data NoteModel utuh
     required String tag,
     Color tagBgColor = AppColors.surfaceContainerHigh,
     Color tagTextColor = AppColors.onSurface,
     required String date,
     required String title,
     required String content,
-    Widget? footer,
   }) {
-    // [TESTING DOC] Membungkus dengan InkWell untuk interaksi klik ke halaman Detail
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const NoteDetailScreen()),
-        );
+          MaterialPageRoute(builder: (context) => NoteDetailScreen(note: note)),
+        ).then((_) => _refreshNotes());
       },
       borderRadius: BorderRadius.circular(12),
       child: Container(
@@ -222,7 +224,7 @@ class NotesScreens extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               content,
-              maxLines: 4,
+              maxLines: 4, // Membatasi preview catatan
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 14,
@@ -230,37 +232,9 @@ class NotesScreens extends StatelessWidget {
                 height: 1.5,
               ),
             ),
-            if (footer != null) ...[
-              const SizedBox(height: 16),
-              const Divider(height: 1),
-              const SizedBox(height: 16),
-              footer,
-            ],
           ],
         ),
       ),
-    );
-  }
-
-  // Widget pembantu untuk merender teks dan ikon di area footer catatan
-  Widget _buildFooterIconText(
-    IconData icon,
-    String text, {
-    Color color = AppColors.secondary,
-  }) {
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: color),
-        const SizedBox(width: 4),
-        Text(
-          text,
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: color,
-          ),
-        ),
-      ],
     );
   }
 }

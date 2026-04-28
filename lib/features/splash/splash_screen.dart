@@ -3,7 +3,7 @@ import '../../core/theme/app_colors.dart';
 import '../auth/screens/login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({Key? key}) : super(key: key);
+  const SplashScreen({super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();

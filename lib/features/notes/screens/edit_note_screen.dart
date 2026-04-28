@@ -1,14 +1,69 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/models/note_model.dart';
+import '../services/note_service.dart';
 
 class EditNoteScreen extends StatefulWidget {
-  const EditNoteScreen({super.key});
+  final NoteModel note; // Menerima data catatan
+
+  const EditNoteScreen({super.key, required this.note});
 
   @override
   State<EditNoteScreen> createState() => _EditNoteScreenState();
 }
 
 class _EditNoteScreenState extends State<EditNoteScreen> {
+  late TextEditingController _titleController;
+  late TextEditingController _contentController;
+  final NoteService _noteService = NoteService();
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Mengisi input dengan data catatan yang sudah ada
+    _titleController = TextEditingController(text: widget.note.title);
+    _contentController = TextEditingController(text: widget.note.content);
+  }
+
+  Future<void> _updateNote() async {
+    if (_titleController.text.trim().isEmpty ||
+        _contentController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Title and content cannot be empty!')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    Map<String, dynamic> noteData = {
+      'user_id': widget.note.userId,
+      'course_id': widget.note.courseId,
+      'title': _titleController.text.trim(),
+      'content': _contentController.text.trim(),
+    };
+
+    await _noteService.updateNote(widget.note.id, noteData);
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      // Pop 2 kali atau pop dengan mengirim result agar bisa refresh halaman sebelumnya
+      Navigator.pop(context, true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,20 +85,31 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              // TODO: Aksi Simpan Catatan
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Save',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ),
+          _isLoading
+              ? const Padding(
+                  padding: EdgeInsets.only(right: 16.0),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                )
+              : TextButton(
+                  onPressed: _updateNote,
+                  child: const Text(
+                    'Save Changes',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
           const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
@@ -59,8 +125,8 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Note Title
             TextField(
+              controller: _titleController,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -77,45 +143,13 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Course Tag / Category
-            Row(
-              children: [
-                const Icon(
-                  Icons.label_outline,
-                  size: 20,
-                  color: AppColors.secondary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.secondary,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Add course tag (e.g. Advanced Physics 301)',
-                      hintStyle: TextStyle(
-                        color: AppColors.outline.withOpacity(0.7),
-                        fontSize: 14,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-              ],
-            ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Divider(),
             ),
-
-            // Note Content
             TextField(
-              maxLines:
-                  null, // Membuat text area bisa memanjang ke bawah tanpa batas
+              controller: _contentController,
+              maxLines: null,
               keyboardType: TextInputType.multiline,
               style: const TextStyle(
                 fontSize: 16,
