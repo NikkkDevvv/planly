@@ -1,15 +1,73 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/models/course_model.dart';
+import '../../auth/models/task_model.dart';
+import '../../tasks/services/task_service.dart';
 import 'edit_course_screen.dart';
 
-class CourseDetailScreen extends StatelessWidget {
+class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
 
   const CourseDetailScreen({super.key, required this.course});
 
   @override
+  State<CourseDetailScreen> createState() => _CourseDetailScreenState();
+}
+
+class _CourseDetailScreenState extends State<CourseDetailScreen> {
+  final TaskService _taskService = TaskService();
+  late Future<List<TaskModel>> _futureTasks;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureTasks = _taskService.get_tasks_by_course(widget.course.id);
+  }
+
+  Map<String, String> _getNextDate(String dayName) {
+    const months = [
+      '', 'JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 
+      'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'
+    ];
+    final days = {
+      'monday': 1, 'tuesday': 2, 'wednesday': 3, 'thursday': 4,
+      'friday': 5, 'saturday': 6, 'sunday': 7
+    };
+    
+    int target = days[dayName.toLowerCase()] ?? 1;
+    DateTime now = DateTime.now();
+    int current = now.weekday;
+    int diff = target - current;
+    
+    if (diff < 0) {
+      diff += 7;
+    }
+    
+    DateTime next = now.add(Duration(days: diff));
+    
+    return {
+      'month': months[next.month],
+      'date': next.day.toString().padLeft(2, '0')
+    };
+  }
+
+  String _formatStatus(String date) {
+    DateTime deadline = DateTime.parse(date);
+    DateTime today = DateTime.now();
+    DateTime tomorrow = today.add(const Duration(days: 1));
+
+    if (deadline.year == tomorrow.year && deadline.month == tomorrow.month && deadline.day == tomorrow.day) {
+      return 'Due Tomorrow';
+    } else if (deadline.isAfter(today)) {
+      return 'Next Week';
+    }
+    return 'Upcoming';
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final nextClass = _getNextDate(widget.course.day_of_week);
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -31,13 +89,16 @@ class CourseDetailScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.edit, color: AppColors.secondary),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const EditCourseScreen(),
+                  builder: (context) => EditCourseScreen(course: widget.course),
                 ),
               );
+              if (result == true) {
+                // Future implementation: Refresh data here
+              }
             },
           ),
           IconButton(
@@ -87,14 +148,14 @@ class CourseDetailScreen extends StatelessWidget {
                       color: AppColors.primaryContainer.withOpacity(0.4),
                       borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Row(
+                    child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.school, size: 16, color: AppColors.primary),
-                        const SizedBox(width: 4),
+                        Icon(Icons.school, size: 16, color: AppColors.primary),
+                        SizedBox(width: 4),
                         Text(
-                          course.course_code,
-                          style: const TextStyle(
+                          'Active Course',
+                          style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppColors.primary,
@@ -105,7 +166,7 @@ class CourseDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    course.name,
+                    widget.course.name,
                     style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
@@ -118,9 +179,9 @@ class CourseDetailScreen extends StatelessWidget {
                     spacing: 8,
                     runSpacing: 8,
                     children: [
-                      _buildChip(Icons.credit_score, '${course.credits} SKS'),
-                      _buildChip(Icons.person, course.lecturer),
-                      _buildChip(Icons.location_on, course.room),
+                      _buildChip(Icons.credit_score, '${widget.course.credits} SKS'),
+                      _buildChip(Icons.person, widget.course.lecturer),
+                      _buildChip(Icons.location_on, widget.course.room),
                     ],
                   ),
                 ],
@@ -169,9 +230,7 @@ class CourseDetailScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          course.day_of_week.length > 3 
-                              ? course.day_of_week.substring(0, 3).toUpperCase() 
-                              : course.day_of_week.toUpperCase(),
+                          nextClass['month']!,
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
@@ -180,7 +239,14 @@ class CourseDetailScreen extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 2),
-                        const Icon(Icons.event, color: AppColors.onSurface, size: 24),
+                        Text(
+                          nextClass['date']!,
+                          style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.onSurface,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -207,7 +273,7 @@ class CourseDetailScreen extends StatelessWidget {
                             ),
                             const SizedBox(width: 4),
                             Text(
-                              '${course.start_time} - ${course.end_time}',
+                              '${widget.course.start_time} - ${widget.course.end_time}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 color: AppColors.secondary,
@@ -254,22 +320,36 @@ class CourseDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _buildRelatedTaskCard(
-              title: 'Assignment 1: Logic Gates',
-              desc:
-                  'Complete problems 1-10 on page 42 regarding basic boolean algebra and truth tables.',
-              status: 'Due Tomorrow',
-              accentColor: const Color(0xFFBA1A1A),
-              bgColor: const Color(0xFFFFDAD6),
-            ),
-            const SizedBox(height: 12),
-            _buildRelatedTaskCard(
-              title: 'Read Chapter 3',
-              desc:
-                  'Von Neumann architecture and memory hierarchies preparation for lab.',
-              status: 'Next Week',
-              accentColor: AppColors.primary,
-              bgColor: AppColors.surfaceContainerHigh,
+            FutureBuilder<List<TaskModel>>(
+              future: _futureTasks,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return const Center(child: Text('Tidak ada tugas'));
+                }
+
+                return ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: snapshot.data!.length,
+                  itemBuilder: (context, index) {
+                    final task = snapshot.data![index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: _buildRelatedTaskCard(
+                        title: task.title,
+                        desc: task.description ?? '',
+                        status: _formatStatus(task.deadlineDate),
+                        accentColor: task.isPriority ? const Color(0xFFBA1A1A) : AppColors.primary,
+                        bgColor: task.isPriority ? const Color(0xFFFFDAD6) : AppColors.surfaceContainerHigh,
+                      ),
+                    );
+                  },
+                );
+              },
             ),
           ],
         ),

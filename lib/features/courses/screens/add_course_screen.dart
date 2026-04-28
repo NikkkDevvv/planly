@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../services/course_service.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});
@@ -9,9 +10,38 @@ class AddCourseScreen extends StatefulWidget {
 }
 
 class _AddCourseScreenState extends State<AddCourseScreen> {
+  final CourseService _courseService = CourseService();
+
+  final TextEditingController _codeController = TextEditingController();
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _creditsController = TextEditingController();
+  final TextEditingController _roomController = TextEditingController();
+  final TextEditingController _lecturerController = TextEditingController();
+
   DateTime? _selectedDate;
   TimeOfDay? _startTime;
   TimeOfDay? _endTime;
+  bool _isLoading = false;
+
+  final List<String> _weekdays = [
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
+  ];
+
+  @override
+  void dispose() {
+    _codeController.dispose();
+    _nameController.dispose();
+    _creditsController.dispose();
+    _roomController.dispose();
+    _lecturerController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickDate() async {
     final DateTime? picked = await showDatePicker(
@@ -31,14 +61,82 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() {
-        if (isStart)
+        if (isStart) {
           _startTime = picked;
-        else
+        } else {
           _endTime = picked;
+        }
       });
+    }
+  }
+
+  String _formatTime(TimeOfDay time) {
+    final h = time.hour.toString().padLeft(2, '0');
+    final m = time.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
+  Future<void> _saveCourse() async {
+    if (_codeController.text.isEmpty ||
+        _nameController.text.isEmpty ||
+        _creditsController.text.isEmpty ||
+        _roomController.text.isEmpty ||
+        _lecturerController.text.isEmpty ||
+        _selectedDate == null ||
+        _startTime == null ||
+        _endTime == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please fill all fields')));
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final String dayOfWeek = _weekdays[_selectedDate!.weekday - 1];
+
+      final Map<String, dynamic> courseData = {
+        'user_id': 1,
+        'course_code': _codeController.text,
+        'name': _nameController.text,
+        'credits': int.parse(_creditsController.text),
+        'lecturer': _lecturerController.text,
+        'room': _roomController.text,
+        'day_of_week': dayOfWeek,
+        'start_time': _formatTime(_startTime!),
+        'end_time': _formatTime(_endTime!),
+        'color_hex': '#3498db',
+      };
+
+      await _courseService.create_course(courseData);
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -80,7 +178,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               style: TextStyle(fontSize: 16, color: AppColors.onSurfaceVariant),
             ),
             const SizedBox(height: 24),
-
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -100,15 +197,42 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildLabel('Course Name'),
-                  const SizedBox(height: 8),
-                  TextField(
-                    decoration: _inputDecoration(
-                      'e.g. Introduction to Design Systems',
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('Code'),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _codeController,
+                              decoration: _inputDecoration('#JMK67'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildLabel('Course Name'),
+                            const SizedBox(height: 8),
+                            TextField(
+                              controller: _nameController,
+                              decoration: _inputDecoration(
+                                'e.g. Data Structures',
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 20),
-
                   Row(
                     children: [
                       Expanded(
@@ -118,6 +242,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                             _buildLabel('Credits / SKS'),
                             const SizedBox(height: 8),
                             TextField(
+                              controller: _creditsController,
                               keyboardType: TextInputType.number,
                               decoration: _inputDecoration('3'),
                             ),
@@ -132,9 +257,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                             _buildLabel('Room / Location'),
                             const SizedBox(height: 8),
                             TextField(
-                              decoration: _inputDecoration(
-                                'e.g. Building A, Room 101',
-                              ),
+                              controller: _roomController,
+                              decoration: _inputDecoration('e.g. Room 101'),
                             ),
                           ],
                         ),
@@ -142,17 +266,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-
                   _buildLabel('Lecturer Name'),
                   const SizedBox(height: 8),
                   TextField(
-                    decoration: _inputDecoration('e.g. Dr. Jane Smith'),
+                    controller: _lecturerController,
+                    decoration: _inputDecoration('e.g. John Sena'),
                   ),
                   const SizedBox(height: 24),
                   const Divider(),
                   const SizedBox(height: 24),
-
-                  // Schedule Info menggunakan Date & Time Picker
                   const Text(
                     'Date & Time',
                     style: TextStyle(
@@ -162,7 +284,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -205,7 +326,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                   TextField(
                                     readOnly: true,
                                     controller: TextEditingController(
-                                      text: _startTime?.format(context) ?? '',
+                                      text: _startTime != null
+                                          ? _formatTime(_startTime!)
+                                          : '',
                                     ),
                                     decoration: _inputDecoration('Time')
                                         .copyWith(
@@ -230,7 +353,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                   TextField(
                                     readOnly: true,
                                     controller: TextEditingController(
-                                      text: _endTime?.format(context) ?? '',
+                                      text: _endTime != null
+                                          ? _formatTime(_endTime!)
+                                          : '',
                                     ),
                                     decoration: _inputDecoration('Time')
                                         .copyWith(
@@ -251,12 +376,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.pop(context),
                         child: const Text(
                           'Cancel',
                           style: TextStyle(
@@ -267,7 +393,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       ),
                       const SizedBox(width: 16),
                       ElevatedButton(
-                        onPressed: () {},
+                        onPressed: _isLoading ? null : _saveCourse,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryContainer,
                           foregroundColor: AppColors.primary,
@@ -280,10 +406,18 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                             borderRadius: BorderRadius.circular(30),
                           ),
                         ),
-                        child: const Text(
-                          'Save Course',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Save Course',
+                                style: TextStyle(fontWeight: FontWeight.w600),
+                              ),
                       ),
                     ],
                   ),
