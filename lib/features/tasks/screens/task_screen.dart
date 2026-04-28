@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../../core/theme/app_colors.dart';
 import '../../../data/models/task_model.dart';
 import '../../../data/models/course_model.dart';
 import '../../courses/services/course_service.dart';

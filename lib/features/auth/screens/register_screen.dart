@@ -13,6 +13,7 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _name_controller = TextEditingController();
+  final TextEditingController _nim_controller = TextEditingController(); // Controller Baru
   final TextEditingController _email_controller = TextEditingController();
   final TextEditingController _password_controller = TextEditingController();
   final TextEditingController _confirm_password_controller = TextEditingController();
@@ -23,6 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void dispose() {
     _name_controller.dispose();
+    _nim_controller.dispose(); // Dispose Controller Baru
     _email_controller.dispose();
     _password_controller.dispose();
     _confirm_password_controller.dispose();
@@ -31,13 +33,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _handle_register() async {
     final name = _name_controller.text.trim();
+    final nim = _nim_controller.text.trim(); // Mengambil input NIM
     final email = _email_controller.text.trim();
     final password = _password_controller.text.trim();
     final confirm_password = _confirm_password_controller.text.trim();
-    final nim = "12345678"; // Placeholder NIM, ganti sesuai kebutuhan
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    // Validasi field kosong termasuk NIM
+    if (name.isEmpty || nim.isEmpty || email.isEmpty || password.isEmpty) {
       _show_message('Please fill in all fields');
+      return;
+    }
+
+    // Validasi minimal 6 karakter sesuai kebutuhan backend
+    if (password.length < 6) {
+      _show_message('Password must be at least 6 characters long');
       return;
     }
 
@@ -49,7 +58,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _is_loading = true);
 
     try {
-      final result = await _auth_service.register(name, email, password,nim);
+      // Mengirim variabel nim ke AuthService
+      final result = await _auth_service.register(name, email, password, nim);
 
       if (result['success'] == true && mounted) {
         _show_message('Registration successful! Please login.');
@@ -115,6 +125,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         hintText: 'John Doe',
                       ),
                       const SizedBox(height: 16),
+                      // Input Field untuk NIM
+                      CustomTextField(
+                        controller: _nim_controller,
+                        label: 'NIM',
+                        hintText: 'e.g. 202303392',
+                        keyboardType: TextInputType.text,
+                      ),
+                      const SizedBox(height: 16),
                       CustomTextField(
                         controller: _email_controller,
                         label: 'Email',
@@ -142,7 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         onPressed: _is_loading ? null : _handle_register,
                       ),
                     ],
-                  ),
+                  ),  
                 ),
                 const SizedBox(height: 24),
                 Row(
