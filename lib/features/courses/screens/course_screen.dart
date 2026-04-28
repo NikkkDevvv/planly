@@ -103,11 +103,17 @@ class _CoursesScreensState extends State<CoursesScreens> {
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 16.0),
         child: FloatingActionButton(
-          onPressed: () {
-            Navigator.push(
+          onPressed: () async {
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => const AddCourseScreen()),
             );
+
+            if (result == true) {
+              setState(() {
+                _futureCourses = _courseService.get_courses(1);
+              });
+            }
           },
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
