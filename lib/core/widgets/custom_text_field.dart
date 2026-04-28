@@ -8,12 +8,12 @@ class CustomTextField extends StatelessWidget {
   final Widget? trailing; // Untuk tombol "Forgot password?" nantinya
 
   const CustomTextField({
-    Key? key,
+    super.key,
     required this.label,
     required this.hintText,
     this.isPassword = false,
     this.trailing,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,7 @@ class CustomTextField extends StatelessWidget {
                 color: AppColors.onSurfaceVariant,
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
         const SizedBox(height: 4),

@@ -4,7 +4,7 @@ import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 
 class RegisterScreen extends StatelessWidget {
-  const RegisterScreen({Key? key}) : super(key: key);
+  const RegisterScreen({super.key});
 
   @override
   Widget build(BuildContext context) {

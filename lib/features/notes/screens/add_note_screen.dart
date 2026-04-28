@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../services/note_service.dart';
 
 class AddNoteScreen extends StatefulWidget {
   const AddNoteScreen({super.key});
@@ -9,6 +10,50 @@ class AddNoteScreen extends StatefulWidget {
 }
 
 class _AddNoteScreenState extends State<AddNoteScreen> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+  final NoteService _noteService = NoteService();
+  bool _isLoading = false;
+
+  Future<void> _saveNote() async {
+    if (_titleController.text.trim().isEmpty ||
+        _contentController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Title and content cannot be empty!')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Simulasi data untuk dikirim ke backend
+    Map<String, dynamic> noteData = {
+      'user_id': 1, // Simulasi User ID
+      'course_id':
+          null, // Boleh diisi integer jika ada fitur pilih course nantinya
+      'title': _titleController.text.trim(),
+      'content': _contentController.text.trim(),
+    };
+
+    await _noteService.createNote(noteData);
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+      Navigator.pop(context); // Kembali ke halaman sebelumnya
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -30,20 +75,31 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
           ),
         ),
         actions: [
-          TextButton(
-            onPressed: () {
-              // TODO: Aksi Simpan Catatan
-              Navigator.pop(context);
-            },
-            child: const Text(
-              'Save',
-              style: TextStyle(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 16,
-              ),
-            ),
-          ),
+          _isLoading
+              ? const Padding(
+                  padding: EdgeInsets.only(right: 16.0),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                )
+              : TextButton(
+                  onPressed: _saveNote,
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
           const SizedBox(width: 8),
         ],
         bottom: PreferredSize(
@@ -59,8 +115,8 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Note Title
             TextField(
+              controller: _titleController,
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -77,45 +133,13 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
                 contentPadding: EdgeInsets.zero,
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Course Tag / Category
-            Row(
-              children: [
-                const Icon(
-                  Icons.label_outline,
-                  size: 20,
-                  color: AppColors.secondary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.secondary,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Add course tag (e.g. Advanced Physics 301)',
-                      hintStyle: TextStyle(
-                        color: AppColors.outline.withOpacity(0.7),
-                        fontSize: 14,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-              ],
-            ),
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 16.0),
               child: Divider(),
             ),
-
-            // Note Content
             TextField(
-              maxLines:
-                  null, // Membuat text area bisa memanjang ke bawah tanpa batas
+              controller: _contentController,
+              maxLines: null,
               keyboardType: TextInputType.multiline,
               style: const TextStyle(
                 fontSize: 16,
