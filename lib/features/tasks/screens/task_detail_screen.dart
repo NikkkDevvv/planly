@@ -1,12 +1,76 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
-import 'edit_task_screen.dart'; // Import halaman edit
+import '../../auth/models/task_model.dart';
+import 'edit_task_screen.dart';
 
 class TaskDetailScreen extends StatelessWidget {
-  const TaskDetailScreen({super.key});
+  final TaskModel task;
+
+  const TaskDetailScreen({super.key, required this.task});
+
+  bool _isOverdue(String dateStr) {
+    if (task.status.toLowerCase() == 'done') return false;
+    try {
+      DateTime deadlineDate = DateTime.parse(dateStr);
+      DateTime today = DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+      );
+      return deadlineDate.isBefore(today);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  String _formatDateTime(String dateStr, String timeStr) {
+    try {
+      DateTime d = DateTime.parse(dateStr);
+      const months = [
+        '',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      return '${months[d.month]} ${d.day}, ${d.year} - $timeStr';
+    } catch (e) {
+      return '$dateStr - $timeStr';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final bool isDone = task.status.toLowerCase() == 'done';
+    final bool isOverdue = _isOverdue(task.deadlineDate);
+
+    Color statusColor = AppColors.primary;
+    Color statusBgColor = AppColors.primaryContainer;
+    String statusText = 'Pending';
+
+    if (isDone) {
+      statusColor = Colors.green;
+      statusBgColor = Colors.green.withOpacity(0.2);
+      statusText = 'Completed';
+    } else if (isOverdue) {
+      statusColor = const Color(0xFFBA1A1A);
+      statusBgColor = const Color(0xFFFFDAD6);
+      statusText = 'Overdue';
+    } else if (task.isPriority) {
+      statusText = 'High Priority';
+    } else {
+      statusColor = AppColors.onSurfaceVariant;
+      statusBgColor = AppColors.surfaceContainerHigh;
+    }
+
     return Scaffold(
       backgroundColor: AppColors.surface,
       appBar: AppBar(
@@ -28,10 +92,9 @@ class TaskDetailScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () {
-              // Navigasi ke Edit Task
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => const EditTaskScreen()),
+                MaterialPageRoute(builder: (context) => EditTaskScreen(task: task)),
               );
             },
             child: const Text(
@@ -43,9 +106,7 @@ class TaskDetailScreen extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () {
-              // TODO: Aksi Delete
-            },
+            onPressed: () {},
             child: const Text(
               'Delete',
               style: TextStyle(
@@ -77,25 +138,28 @@ class TaskDetailScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFDAD6),
+                color: statusBgColor,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Text(
-                'Overdue',
+              child: Text(
+                statusText,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: Color(0xFFBA1A1A),
+                  color: statusColor,
                 ),
               ),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'Finalize Q3 Marketing Report',
+            Text(
+              task.title,
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
-                color: AppColors.onSurface,
+                color: isDone
+                    ? AppColors.onSurfaceVariant
+                    : AppColors.onSurface,
+                decoration: isDone ? TextDecoration.lineThrough : null,
                 height: 1.2,
               ),
             ),
@@ -111,9 +175,11 @@ class TaskDetailScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'Marketing',
-                  style: TextStyle(
+                Text(
+                  task.courseId != null
+                      ? 'Course ID: ${task.courseId}'
+                      : 'General Task',
+                  style: const TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                     color: AppColors.onSurfaceVariant,
@@ -122,15 +188,12 @@ class TaskDetailScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 32),
-
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: const Color(0xFFBA1A1A).withOpacity(0.5),
-                ),
+                border: Border.all(color: statusColor.withOpacity(0.5)),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.02),
@@ -144,8 +207,8 @@ class TaskDetailScreen extends StatelessWidget {
                 children: [
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
+                    children: [
+                      const Text(
                         'DEADLINE DATE',
                         style: TextStyle(
                           fontSize: 12,
@@ -154,27 +217,22 @@ class TaskDetailScreen extends StatelessWidget {
                           color: AppColors.onSurfaceVariant,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        'Oct 24, 2026 - 5:00 PM',
+                        _formatDateTime(task.deadlineDate, task.deadlineTime),
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFBA1A1A),
+                          color: statusColor,
                         ),
                       ),
                     ],
                   ),
-                  const Icon(
-                    Icons.calendar_today,
-                    color: Color(0xFFBA1A1A),
-                    size: 28,
-                  ),
+                  Icon(Icons.calendar_today, color: statusColor, size: 28),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -194,8 +252,8 @@ class TaskDetailScreen extends StatelessWidget {
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
+                children: [
+                  const Text(
                     'Description',
                     style: TextStyle(
                       fontSize: 18,
@@ -203,10 +261,12 @@ class TaskDetailScreen extends StatelessWidget {
                       color: AppColors.onSurface,
                     ),
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Text(
-                    'Review the latest analytics from the Q3 campaign, synthesize findings into the slide deck, and ensure all brand assets are updated.\n\nNeed to coordinate with Sarah on the final numbers before the presentation on Thursday.',
-                    style: TextStyle(
+                    task.description?.isNotEmpty == true
+                        ? task.description!
+                        : 'No description provided.',
+                    style: const TextStyle(
                       fontSize: 16,
                       color: AppColors.onSurfaceVariant,
                       height: 1.6,
@@ -218,8 +278,6 @@ class TaskDetailScreen extends StatelessWidget {
           ],
         ),
       ),
-
-      // Bottom Action Bar HANYA berisi Complete (Full width)
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         decoration: BoxDecoration(
@@ -240,22 +298,25 @@ class TaskDetailScreen extends StatelessWidget {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Update status menjadi Done
-              },
+              onPressed: isDone ? null : () {},
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryContainer.withOpacity(0.3),
-                foregroundColor: AppColors.primary,
+                backgroundColor: isDone
+                    ? Colors.grey.withOpacity(0.2)
+                    : AppColors.primaryContainer.withOpacity(0.3),
+                foregroundColor: isDone ? Colors.grey : AppColors.primary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              icon: const Icon(Icons.check_circle, size: 24),
-              label: const Text(
-                'Complete Task',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              icon: Icon(isDone ? Icons.check : Icons.check_circle, size: 24),
+              label: Text(
+                isDone ? 'Task Completed' : 'Complete Task',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),

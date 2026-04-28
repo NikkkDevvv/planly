@@ -1,23 +1,61 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/models/task_model.dart';
+import '../services/task_service.dart';
 
 class EditTaskScreen extends StatefulWidget {
-  const EditTaskScreen({super.key});
+  final TaskModel task;
+
+  const EditTaskScreen({super.key, required this.task});
 
   @override
   State<EditTaskScreen> createState() => _EditTaskScreenState();
 }
 
 class _EditTaskScreenState extends State<EditTaskScreen> {
-  String? _selectedSubject;
-  bool _isPending = true;
+  final TaskService _taskService = TaskService();
+  late TextEditingController _titleController;
+  late TextEditingController _descController;
+
+  int? _selectedCourseId;
+  late bool _isPending;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleController = TextEditingController(text: widget.task.title);
+    _descController = TextEditingController(text: widget.task.description ?? '');
+    _selectedCourseId = widget.task.courseId;
+    _isPending = widget.task.status.toLowerCase() != 'done';
+    
+    try {
+      _selectedDate = DateTime.parse(widget.task.deadlineDate);
+    } catch (e) {
+      _selectedDate = null;
+    }
+    
+    try {
+      final parts = widget.task.deadlineTime.split(':');
+      _selectedTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+    } catch (e) {
+      _selectedTime = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _selectedDate ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
@@ -27,9 +65,67 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   Future<void> _pickTime() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _selectedTime ?? TimeOfDay.now(),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
     );
     if (picked != null) setState(() => _selectedTime = picked);
+  }
+
+  String _formatDate(DateTime date) {
+    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+  }
+
+  String _formatTime(TimeOfDay time) {
+    return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
+  }
+
+  Future<void> _updateTask() async {
+    if (_titleController.text.isEmpty || _selectedDate == null || _selectedTime == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please fill title, date, and time')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final Map<String, dynamic> taskData = {
+        'user_id': widget.task.userId,
+        'course_id': _selectedCourseId,
+        'title': _titleController.text,
+        'description': _descController.text,
+        'deadline_date': _formatDate(_selectedDate!),
+        'deadline_time': _formatTime(_selectedTime!),
+        'status': _isPending ? 'pending' : 'done',
+        'is_priority': widget.task.isPriority,
+      };
+
+      await _taskService.update_task(widget.task.id, taskData);
+
+      if (mounted) {
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString())),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -87,45 +183,41 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                   _buildLabel('Task Title'),
                   const SizedBox(height: 8),
                   TextField(
+                    controller: _titleController,
                     decoration: _inputDecoration(
                       'e.g., Complete final project report',
                     ),
                   ),
                   const SizedBox(height: 20),
-
-                  _buildLabel('Subject'),
+                  _buildLabel('Subject / Course'),
                   const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
+                  DropdownButtonFormField<int?>(
                     decoration: _inputDecoration('Select a subject category'),
                     icon: const Icon(
                       Icons.expand_more,
                       color: AppColors.outline,
                     ),
-                    value: _selectedSubject,
+                    value: _selectedCourseId,
                     items: const [
                       DropdownMenuItem(
-                        value: 'academics',
-                        child: Text('Academics'),
+                        value: null,
+                        child: Text('General / Personal'),
                       ),
-                      DropdownMenuItem(value: 'work', child: Text('Work')),
-                      DropdownMenuItem(
-                        value: 'personal',
-                        child: Text('Personal'),
-                      ),
+                      DropdownMenuItem(value: 1, child: Text('Course #01')),
+                      DropdownMenuItem(value: 2, child: Text('Course #02')),
                     ],
                     onChanged: (value) =>
-                        setState(() => _selectedSubject = value),
+                        setState(() => _selectedCourseId = value),
                   ),
                   const SizedBox(height: 20),
-
                   _buildLabel('Description'),
                   const SizedBox(height: 8),
                   TextField(
+                    controller: _descController,
                     maxLines: 3,
                     decoration: _inputDecoration('Add additional details...'),
                   ),
                   const SizedBox(height: 20),
-
                   _buildLabel('Deadline'),
                   const SizedBox(height: 8),
                   Row(
@@ -155,7 +247,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                           controller: TextEditingController(
                             text: _selectedTime == null
                                 ? ''
-                                : _selectedTime!.format(context),
+                                : _formatTime(_selectedTime!),
                           ),
                           decoration: _inputDecoration('Time').copyWith(
                             prefixIcon: const Icon(
@@ -170,7 +262,6 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
-
                   _buildLabel('Status'),
                   const SizedBox(height: 8),
                   Container(
@@ -197,7 +288,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: _isLoading ? null : () => Navigator.pop(context),
                   child: const Text(
                     'Cancel',
                     style: TextStyle(
@@ -208,7 +299,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: _isLoading ? null : _updateTask,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -221,9 +312,15 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                     ),
                     elevation: 0,
                   ),
-                  icon: const Icon(Icons.check_circle, size: 18),
+                  icon: _isLoading 
+                      ? const SizedBox(
+                          width: 18, 
+                          height: 18, 
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                        )
+                      : const Icon(Icons.check_circle, size: 18),
                   label: const Text(
-                    'Save Task',
+                    'Save Changes',
                     style: TextStyle(fontWeight: FontWeight.w600),
                   ),
                 ),
@@ -236,13 +333,13 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   }
 
   Widget _buildLabel(String text) => Text(
-    text,
-    style: const TextStyle(
-      fontSize: 14,
-      fontWeight: FontWeight.w500,
-      color: AppColors.onSurfaceVariant,
-    ),
-  );
+        text,
+        style: const TextStyle(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: AppColors.onSurfaceVariant,
+        ),
+      );
 
   InputDecoration _inputDecoration(String hint) {
     return InputDecoration(

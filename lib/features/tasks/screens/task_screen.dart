@@ -1,14 +1,61 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../auth/models/task_model.dart';
+import '../services/task_service.dart';
 import 'add_task_screen.dart';
 import 'task_detail_screen.dart';
 
-class TasksScreens extends StatelessWidget {
+class TasksScreens extends StatefulWidget {
   const TasksScreens({super.key});
 
   @override
+  State<TasksScreens> createState() => _TasksScreensState();
+}
+
+class _TasksScreensState extends State<TasksScreens> {
+  final TaskService _taskService = TaskService();
+  late Future<List<TaskModel>> _futureTasks;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureTasks = _taskService.get_all_tasks(1);
+  }
+
+  String _formatTimeDisplay(String dateStr, String timeStr) {
+    try {
+      DateTime deadlineDate = DateTime.parse(dateStr);
+      DateTime today = DateTime.now();
+      DateTime tomorrow = today.add(const Duration(days: 1));
+      DateTime yesterday = today.subtract(const Duration(days: 1));
+
+      bool isToday = deadlineDate.year == today.year && deadlineDate.month == today.month && deadlineDate.day == today.day;
+      bool isTomorrow = deadlineDate.year == tomorrow.year && deadlineDate.month == tomorrow.month && deadlineDate.day == tomorrow.day;
+      bool isYesterday = deadlineDate.year == yesterday.year && deadlineDate.month == yesterday.month && deadlineDate.day == yesterday.day;
+
+      if (isToday) return 'Today, $timeStr';
+      if (isTomorrow) return 'Tomorrow, $timeStr';
+      if (isYesterday) return 'Yesterday, $timeStr';
+
+      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${months[deadlineDate.month]} ${deadlineDate.day}, $timeStr';
+    } catch (e) {
+      return '$dateStr $timeStr';
+    }
+  }
+
+  bool _isOverdue(String dateStr) {
+    try {
+      DateTime deadlineDate = DateTime.parse(dateStr);
+      DateTime today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+      return deadlineDate.isBefore(today);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Menggunakan DefaultTabController untuk fitur swipe antar Tab
     return DefaultTabController(
       length: 2,
       child: Scaffold(
@@ -32,7 +79,6 @@ class TasksScreens extends StatelessWidget {
                 ),
               ),
             ),
-            // Tab Bar
             const TabBar(
               indicatorColor: AppColors.primary,
               labelColor: AppColors.primary,
@@ -43,54 +89,75 @@ class TasksScreens extends StatelessWidget {
                 Tab(text: 'Done'),
               ],
             ),
-            // Tab Bar View (Bisa di-swipe)
             Expanded(
-              child: TabBarView(
-                children: [
-                  // Halaman 1: Pending Tasks
-                  ListView(
-                    padding: const EdgeInsets.all(24),
+              child: FutureBuilder<List<TaskModel>>(
+                future: _futureTasks,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text('No tasks available'));
+                  }
+
+                  final allTasks = snapshot.data!;
+                  final pendingTasks = allTasks.where((t) => t.status.toLowerCase() != 'done').toList();
+                  final doneTasks = allTasks.where((t) => t.status.toLowerCase() == 'done').toList();
+
+                  return TabBarView(
                     children: [
-                      _buildTaskCard(
-                        context,
-                        title: 'Finalize Q3 Marketing Report',
-                        category: 'Marketing Strategy',
-                        time: 'Yesterday, 5:00 PM',
-                        statusLabel: 'Overdue',
-                        isOverdue: true,
+                      ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: pendingTasks.length,
+                        itemBuilder: (context, index) {
+                          final task = pendingTasks[index];
+                          bool isOverdue = _isOverdue(task.deadlineDate);
+                          
+                          String? statusLabel;
+                          if (isOverdue) {
+                            statusLabel = 'Overdue';
+                          } else if (task.isPriority) {
+                            statusLabel = 'High Priority';
+                          }
+
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: _buildTaskCard(
+                              context,
+                              task: task,
+                              title: task.title,
+                              category: 'Course ID: ${task.courseId ?? 'General'}',
+                              time: _formatTimeDisplay(task.deadlineDate, task.deadlineTime),
+                              statusLabel: statusLabel,
+                              isOverdue: isOverdue,
+                              isPriority: task.isPriority,
+                              isDone: false,
+                            ),
+                          );
+                        },
                       ),
-                      const SizedBox(height: 16),
-                      _buildTaskCard(
-                        context,
-                        title: 'Review Design System Updates',
-                        category: 'Product Design',
-                        time: 'Today, 11:59 PM',
-                        statusLabel: 'High Priority',
-                        isPriority: true,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildTaskCard(
-                        context,
-                        title: 'Sync with Engineering Lead',
-                        category: 'Sprint Planning',
-                        time: 'Tomorrow, 10:00 AM',
+                      ListView.builder(
+                        padding: const EdgeInsets.all(24),
+                        itemCount: doneTasks.length,
+                        itemBuilder: (context, index) {
+                          final task = doneTasks[index];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 16.0),
+                            child: _buildTaskCard(
+                              context,
+                              task: task,
+                              title: task.title,
+                              category: 'Course ID: ${task.courseId ?? 'General'}',
+                              time: _formatTimeDisplay(task.deadlineDate, task.deadlineTime),
+                              isDone: true,
+                            ),
+                          );
+                        },
                       ),
                     ],
-                  ),
-                  // Halaman 2: Done Tasks
-                  ListView(
-                    padding: const EdgeInsets.all(24),
-                    children: [
-                      _buildTaskCard(
-                        context,
-                        title: 'Draft User Persona',
-                        category: 'UX Research',
-                        time: 'Oct 20, 2:00 PM',
-                        isDone: true,
-                      ),
-                    ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ],
@@ -118,13 +185,14 @@ class TasksScreens extends StatelessWidget {
 
   Widget _buildTaskCard(
     BuildContext context, {
+    required TaskModel task,
     required String title,
     required String category,
     required String time,
     String? statusLabel,
     bool isOverdue = false,
     bool isPriority = false,
-    bool isDone = false, // Menandakan task selesai
+    bool isDone = false,
   }) {
     Color timeIconColor = isOverdue
         ? const Color(0xFFBA1A1A)
@@ -134,7 +202,7 @@ class TasksScreens extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => const TaskDetailScreen()),
+          MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
         );
       },
       borderRadius: BorderRadius.circular(12),
