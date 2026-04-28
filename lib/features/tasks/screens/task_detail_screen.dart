@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../auth/models/task_model.dart';
+import '../services/task_service.dart';
 import 'edit_task_screen.dart';
 
-class TaskDetailScreen extends StatelessWidget {
+class TaskDetailScreen extends StatefulWidget {
   final TaskModel task;
 
   const TaskDetailScreen({super.key, required this.task});
 
+  @override
+  State<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends State<TaskDetailScreen> {
+  final TaskService _taskService = TaskService();
+  bool _isLoading = false;
+
   bool _isOverdue(String dateStr) {
-    if (task.status.toLowerCase() == 'done') return false;
+    if (widget.task.status.toLowerCase() == 'done') return false;
     try {
       DateTime deadlineDate = DateTime.parse(dateStr);
-      DateTime today = DateTime(
-        DateTime.now().year,
-        DateTime.now().month,
-        DateTime.now().day,
-      );
+      DateTime today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
       return deadlineDate.isBefore(today);
     } catch (e) {
       return false;
@@ -27,19 +32,8 @@ class TaskDetailScreen extends StatelessWidget {
     try {
       DateTime d = DateTime.parse(dateStr);
       const months = [
-        '',
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
+        '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
       ];
       return '${months[d.month]} ${d.day}, ${d.year} - $timeStr';
     } catch (e) {
@@ -47,11 +41,55 @@ class TaskDetailScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _deleteTask() async {
+    setState(() => _isLoading = true);
+    try {
+      await _taskService.delete_task(widget.task.id);
+      if (mounted) {
+        Navigator.pop(context, true); // Kembali ke list dan bawa nilai true untuk refresh
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _completeTask() async {
+    setState(() => _isLoading = true);
+    try {
+      final Map<String, dynamic> updatedData = {
+        'user_id': widget.task.userId,
+        'course_id': widget.task.courseId,
+        'title': widget.task.title,
+        'description': widget.task.description,
+        'deadline_date': widget.task.deadlineDate,
+        'deadline_time': widget.task.deadlineTime,
+        'status': 'done', // Ubah status menjadi done
+        'is_priority': widget.task.isPriority,
+      };
+
+      await _taskService.update_task(widget.task.id, updatedData);
+      
+      if (mounted) {
+        Navigator.pop(context, true); // Kembali ke list dan bawa nilai true untuk refresh
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool isDone = task.status.toLowerCase() == 'done';
-    final bool isOverdue = _isOverdue(task.deadlineDate);
-
+    final bool isDone = widget.task.status.toLowerCase() == 'done';
+    final bool isOverdue = _isOverdue(widget.task.deadlineDate);
+    
     Color statusColor = AppColors.primary;
     Color statusBgColor = AppColors.primaryContainer;
     String statusText = 'Pending';
@@ -64,7 +102,7 @@ class TaskDetailScreen extends StatelessWidget {
       statusColor = const Color(0xFFBA1A1A);
       statusBgColor = const Color(0xFFFFDAD6);
       statusText = 'Overdue';
-    } else if (task.isPriority) {
+    } else if (widget.task.isPriority) {
       statusText = 'High Priority';
     } else {
       statusColor = AppColors.onSurfaceVariant;
@@ -91,11 +129,14 @@ class TaskDetailScreen extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () {
-              Navigator.push(
+            onPressed: _isLoading ? null : () async {
+              final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => EditTaskScreen(task: task)),
+                MaterialPageRoute(builder: (context) => EditTaskScreen(task: widget.task)),
               );
+              if (result == true && mounted) {
+                Navigator.pop(context, true); // Refresh layar sebelumnya
+              }
             },
             child: const Text(
               'Edit',
@@ -106,7 +147,29 @@ class TaskDetailScreen extends StatelessWidget {
             ),
           ),
           TextButton(
-            onPressed: () {},
+            onPressed: _isLoading ? null : () {
+              // Tampilkan dialog konfirmasi sebelum menghapus
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Task'),
+                  content: const Text('Are you sure you want to delete this task?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _deleteTask();
+                      },
+                      child: const Text('Delete', style: TextStyle(color: Color(0xFFBA1A1A))),
+                    ),
+                  ],
+                ),
+              );
+            },
             child: const Text(
               'Delete',
               style: TextStyle(
@@ -125,158 +188,166 @@ class TaskDetailScreen extends StatelessWidget {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(
-          top: 24,
-          bottom: 96,
-          left: 24,
-          right: 24,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: statusBgColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                statusText,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: statusColor,
-                ),
-              ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.only(
+              top: 24,
+              bottom: 96,
+              left: 24,
+              right: 24,
             ),
-            const SizedBox(height: 12),
-            Text(
-              task.title,
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: isDone
-                    ? AppColors.onSurfaceVariant
-                    : AppColors.onSurface,
-                decoration: isDone ? TextDecoration.lineThrough : null,
-                height: 1.2,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 12,
-                  height: 12,
-                  decoration: const BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusBgColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    statusText,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor,
+                    ),
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(height: 12),
                 Text(
-                  task.courseId != null
-                      ? 'Course ID: ${task.courseId}'
-                      : 'General Task',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.onSurfaceVariant,
+                  widget.task.title,
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: isDone ? AppColors.onSurfaceVariant : AppColors.onSurface,
+                    decoration: isDone ? TextDecoration.lineThrough : null,
+                    height: 1.2,
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 32),
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: statusColor.withOpacity(0.5)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      widget.task.courseId != null ? 'Course ID: ${widget.task.courseId}' : 'General Task',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: statusColor.withOpacity(0.5),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'DEADLINE DATE',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.5,
+                              color: AppColors.onSurfaceVariant,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _formatDateTime(widget.task.deadlineDate, widget.task.deadlineTime),
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      Icon(
+                        Icons.calendar_today,
+                        color: statusColor,
+                        size: 28,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: AppColors.outlineVariant.withOpacity(0.5),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
-                        'DEADLINE DATE',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
-                          color: AppColors.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatDateTime(task.deadlineDate, task.deadlineTime),
+                        'Description',
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: statusColor,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.task.description?.isNotEmpty == true ? widget.task.description! : 'No description provided.',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: AppColors.onSurfaceVariant,
+                          height: 1.6,
                         ),
                       ),
                     ],
                   ),
-                  Icon(Icons.calendar_today, color: statusColor, size: 28),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.outlineVariant.withOpacity(0.5),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.02),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Description',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    task.description?.isNotEmpty == true
-                        ? task.description!
-                        : 'No description provided.',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.onSurfaceVariant,
-                      height: 1.6,
-                    ),
-                  ),
-                ],
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+          if (_isLoading)
+            const Center(
+              child: CircularProgressIndicator(),
+            ),
+        ],
       ),
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -298,11 +369,9 @@ class TaskDetailScreen extends StatelessWidget {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: isDone ? null : () {},
+              onPressed: (isDone || _isLoading) ? null : _completeTask,
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDone
-                    ? Colors.grey.withOpacity(0.2)
-                    : AppColors.primaryContainer.withOpacity(0.3),
+                backgroundColor: isDone ? Colors.grey.withOpacity(0.2) : AppColors.primaryContainer.withOpacity(0.3),
                 foregroundColor: isDone ? Colors.grey : AppColors.primary,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -313,10 +382,7 @@ class TaskDetailScreen extends StatelessWidget {
               icon: Icon(isDone ? Icons.check : Icons.check_circle, size: 24),
               label: Text(
                 isDone ? 'Task Completed' : 'Complete Task',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ),
