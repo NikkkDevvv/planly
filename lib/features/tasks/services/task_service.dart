@@ -33,6 +33,7 @@ class TaskService {
     }
   }
 
+  // -------------- MASIH MENGGUNAKAN SYNTAX WHERE, BELUM LEWAT BACKEND ---------------------
   Future<List<TaskModel>> get_tasks_by_course(int course_id) async {
     final headers = await _get_headers();
     final response = await http.get(
@@ -42,7 +43,19 @@ class TaskService {
 
     if (response.statusCode == 200) {
       List<dynamic> body = jsonDecode(response.body);
-      return body.map((dynamic item) => TaskModel.fromJson(item)).toList();
+
+      // 1. Parsing seluruh data JSON menjadi List of TaskModel
+      List<TaskModel> allTasks = body
+          .map((dynamic item) => TaskModel.fromJson(item))
+          .toList();
+
+      // 2. Filter secara lokal HANYA task yang milik mata kuliah ini
+      // Note: Pastikan nama variabelnya sesuai model Anda (courseId atau course_id)
+      List<TaskModel> filteredTasks = allTasks
+          .where((task) => task.course_id == course_id)
+          .toList();
+
+      return filteredTasks;
     } else {
       throw Exception('Failed to load course tasks');
     }
@@ -63,7 +76,10 @@ class TaskService {
     }
   }
 
-  Future<TaskModel> update_task(int task_id, Map<String, dynamic> task_data) async {
+  Future<TaskModel> update_task(
+    int task_id,
+    Map<String, dynamic> task_data,
+  ) async {
     final headers = await _get_headers();
     final response = await http.put(
       Uri.parse('$base_url/tasks/$task_id'),
