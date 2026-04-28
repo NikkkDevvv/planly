@@ -40,8 +40,8 @@ class _EditNoteScreenState extends State<EditNoteScreen> {
     });
 
     Map<String, dynamic> noteData = {
-      'user_id': widget.note.userId,
-      'course_id': widget.note.courseId,
+      'user_id': widget.note.user_id,
+      'course_id': widget.note.course_id,
       'title': _titleController.text.trim(),
       'content': _contentController.text.trim(),
     };

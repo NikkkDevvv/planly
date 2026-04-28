@@ -108,8 +108,8 @@ class _NotesScreensState extends State<NotesScreens> {
                         child: _buildNoteCard(
                           context,
                           note: note,
-                          tag: note.courseId != null
-                              ? 'Course ID: ${note.courseId}'
+                          tag: note.course_id != null
+                              ? 'Course ID: ${note.course_id}'
                               : 'General',
                           date: 'Recent', // Fallback
                           title: note.title,
