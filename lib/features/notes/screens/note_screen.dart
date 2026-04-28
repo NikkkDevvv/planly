@@ -3,7 +3,6 @@ import '../../../core/theme/app_colors.dart';
 
 // [TESTING DOC] Import halaman tujuan navigasi
 import 'add_note_screen.dart';
-import 'edit_note_screen.dart';
 import 'note_detail_screen.dart';
 
 class NotesScreens extends StatelessWidget {
