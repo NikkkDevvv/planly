@@ -1,20 +1,28 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/models/task_model.dart';
 
 class TaskService {
   final String base_url = dotenv.env['API_BASE_URL'] ?? '';
 
-  Map<String, String> _get_headers() => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
+  Future<Map<String, String>> _get_headers() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String token = prefs.getString('auth_token') ?? '';
+
+    return {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+  }
 
   Future<List<TaskModel>> get_all_tasks() async {
+    final headers = await _get_headers();
     final response = await http.get(
       Uri.parse('$base_url/tasks'),
-      headers: _get_headers(),
+      headers: headers,
     );
 
     if (response.statusCode == 200) {
@@ -26,9 +34,10 @@ class TaskService {
   }
 
   Future<List<TaskModel>> get_tasks_by_course(int course_id) async {
+    final headers = await _get_headers();
     final response = await http.get(
       Uri.parse('$base_url/tasks?course_id=$course_id'),
-      headers: _get_headers(),
+      headers: headers,
     );
 
     if (response.statusCode == 200) {
@@ -40,9 +49,10 @@ class TaskService {
   }
 
   Future<TaskModel> create_task(Map<String, dynamic> task_data) async {
+    final headers = await _get_headers();
     final response = await http.post(
       Uri.parse('$base_url/tasks'),
-      headers: _get_headers(),
+      headers: headers,
       body: jsonEncode(task_data),
     );
 
@@ -54,9 +64,10 @@ class TaskService {
   }
 
   Future<TaskModel> update_task(int task_id, Map<String, dynamic> task_data) async {
+    final headers = await _get_headers();
     final response = await http.put(
       Uri.parse('$base_url/tasks/$task_id'),
-      headers: _get_headers(),
+      headers: headers,
       body: jsonEncode(task_data),
     );
 
@@ -67,25 +78,23 @@ class TaskService {
     }
   }
 
-  Future<void> finish_task(int task_id) async {
+  Future<bool> finish_task(int task_id) async {
+    final headers = await _get_headers();
     final response = await http.patch(
       Uri.parse('$base_url/tasks/$task_id/finish'),
-      headers: _get_headers(),
+      headers: headers,
     );
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to mark task as finished');
-    }
+    return response.statusCode == 200;
   }
 
-  Future<void> delete_task(int task_id) async {
+  Future<bool> delete_task(int task_id) async {
+    final headers = await _get_headers();
     final response = await http.delete(
       Uri.parse('$base_url/tasks/$task_id'),
-      headers: _get_headers(),
+      headers: headers,
     );
 
-    if (response.statusCode != 200 && response.statusCode != 204) {
-      throw Exception('Failed to delete task');
-    }
+    return response.statusCode == 200 || response.statusCode == 204;
   }
 }

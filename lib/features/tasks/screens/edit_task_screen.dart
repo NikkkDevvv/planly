@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/task_model.dart';
+import '../../../data/models/course_model.dart';
+import '../../courses/services/course_service.dart';
 import '../services/task_service.dart';
 
 class EditTaskScreen extends StatefulWidget {
@@ -13,59 +15,73 @@ class EditTaskScreen extends StatefulWidget {
 }
 
 class _EditTaskScreenState extends State<EditTaskScreen> {
-  final TaskService _taskService = TaskService();
-  late TextEditingController _titleController;
-  late TextEditingController _descController;
+  final TaskService _task_service = TaskService();
+  final CourseService _course_service = CourseService();
+  
+  late TextEditingController _title_controller;
+  late TextEditingController _desc_controller;
 
-  int? _selectedCourseId;
-  late bool _isPending;
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-  bool _isLoading = false;
+  int? _selected_course_id;
+  late bool _is_pending;
+  late bool _is_priority;
+  DateTime? _selected_date;
+  TimeOfDay? _selected_time;
+  bool _is_loading = false;
+  List<CourseModel> _courses = [];
 
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.task.title);
-    _descController = TextEditingController(text: widget.task.description ?? '');
-    _selectedCourseId = widget.task.course_id;
-    _isPending = widget.task.status.toLowerCase() != 'done';
+    // Mengisi data awal dari model tugas yang akan diedit
+    _title_controller = TextEditingController(text: widget.task.title);
+    _desc_controller = TextEditingController(text: widget.task.description ?? '');
+    _selected_course_id = widget.task.course_id;
+    _is_pending = !widget.task.is_finished;
+    _is_priority = widget.task.is_priority;
     
     try {
-      _selectedDate = DateTime.parse(widget.task.deadline_date);
-    } catch (e) {
-      _selectedDate = null;
-    }
-    
-    try {
+      _selected_date = DateTime.parse(widget.task.deadline_date);
       final parts = widget.task.deadline_time.split(':');
-      _selectedTime = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+      _selected_time = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
     } catch (e) {
-      _selectedTime = null;
+      debugPrint("Error parsing date/time: $e");
+    }
+
+    _load_courses();
+  }
+
+  Future<void> _load_courses() async {
+    try {
+      final courses = await _course_service.get_courses();
+      setState(() {
+        _courses = courses;
+      });
+    } catch (e) {
+      debugPrint("Error: $e");
     }
   }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
+    _title_controller.dispose();
+    _desc_controller.dispose();
     super.dispose();
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pick_date() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _selectedDate ?? DateTime.now(),
+      initialDate: _selected_date ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _selectedDate = picked);
+    if (picked != null) setState(() => _selected_date = picked);
   }
 
-  Future<void> _pickTime() async {
+  Future<void> _pick_time() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime ?? TimeOfDay.now(),
+      initialTime: _selected_time ?? TimeOfDay.now(),
       builder: (BuildContext context, Widget? child) {
         return MediaQuery(
           data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
@@ -73,42 +89,49 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         );
       },
     );
-    if (picked != null) setState(() => _selectedTime = picked);
+    if (picked != null) setState(() => _selected_time = picked);
   }
 
-  String _formatDate(DateTime date) {
+  String _format_date(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
-  String _formatTime(TimeOfDay time) {
+  String _format_time(TimeOfDay time) {
     return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
 
-  Future<void> _updateTask() async {
-    if (_titleController.text.isEmpty || _selectedDate == null || _selectedTime == null) {
+  Future<void> _update_task() async {
+    if (_title_controller.text.isEmpty || _selected_date == null || _selected_time == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill title, date, and time')),
       );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    if (_selected_course_id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a course.')),
+      );
+      return;
+    }
+
+    setState(() => _is_loading = true);
 
     try {
-      final Map<String, dynamic> taskData = {
+      final String deadline_string = 
+          "${_format_date(_selected_date!)} ${_format_time(_selected_time!)}:00";
+
+      final Map<String, dynamic> task_data = {
         'user_id': widget.task.user_id,
-        'course_id': _selectedCourseId,
-        'title': _titleController.text,
-        'description': _descController.text,
-        'deadline_date': _formatDate(_selectedDate!),
-        'deadline_time': _formatTime(_selectedTime!),
-        'status': _isPending ? 'pending' : 'done',
-        'is_priority': widget.task.is_priority,
+        'course_id': _selected_course_id,
+        'task_title': _title_controller.text, // Sesuai $fillable BE
+        'description': _desc_controller.text,
+        'deadline': deadline_string,         // Sesuai $fillable BE
+        'is_finished': _is_pending ? 0 : 1,   // Sesuai $fillable BE
+        'is_priority': _is_priority ? 1 : 0,
       };
 
-      await _taskService.update_task(widget.task.id, taskData);
+      await _task_service.update_task(widget.task.id, task_data);
 
       if (mounted) {
         Navigator.pop(context, true);
@@ -120,11 +143,7 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         );
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _is_loading = false);
     }
   }
 
@@ -142,19 +161,12 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         ),
         title: const Text(
           'Edit Task',
-          style: TextStyle(
-            color: AppColors.onSurface,
-            fontWeight: FontWeight.w600,
-            fontSize: 18,
-          ),
+          style: TextStyle(color: AppColors.onSurface, fontWeight: FontWeight.w600, fontSize: 18),
         ),
         centerTitle: true,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1.0),
-          child: Container(
-            color: AppColors.outlineVariant.withOpacity(0.3),
-            height: 1.0,
-          ),
+          child: Container(color: AppColors.outlineVariant.withOpacity(0.3), height: 1.0),
         ),
       ),
       body: SingleChildScrollView(
@@ -166,59 +178,44 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.outlineVariant.withOpacity(0.5),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                border: Border.all(color: AppColors.outlineVariant.withOpacity(0.5)),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 12, offset: const Offset(0, 4))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildLabel('Task Title'),
+                  _build_label('Task Title'),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _titleController,
-                    decoration: _inputDecoration(
-                      'e.g., Complete final project report',
-                    ),
+                    controller: _title_controller,
+                    decoration: _input_decoration('e.g., Complete final project report'),
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Subject / Course'),
+                  _build_label('Subject / Course'),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
-                    decoration: _inputDecoration('Select a subject category'),
-                    icon: const Icon(
-                      Icons.expand_more,
-                      color: AppColors.outline,
-                    ),
-                    value: _selectedCourseId,
-                    items: const [
-                      DropdownMenuItem(
-                        value: null,
-                        child: Text('General / Personal'),
-                      ),
-                      DropdownMenuItem(value: 1, child: Text('Course #01')),
-                      DropdownMenuItem(value: 2, child: Text('Course #02')),
+                    decoration: _input_decoration('Select a subject category'),
+                    isExpanded: true,
+                    icon: const Icon(Icons.expand_more, color: AppColors.outline),
+                    value: _selected_course_id,
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('General / Personal')),
+                      ..._courses.map((course) {
+                        return DropdownMenuItem(value: course.id, child: Text(course.name));
+                      }).toList(),
                     ],
-                    onChanged: (value) =>
-                        setState(() => _selectedCourseId = value),
+                    onChanged: (value) => setState(() => _selected_course_id = value),
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Description'),
+                  _build_label('Description'),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _descController,
+                    controller: _desc_controller,
                     maxLines: 3,
-                    decoration: _inputDecoration('Add additional details...'),
+                    decoration: _input_decoration('Add additional details...'),
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Deadline'),
+                  _build_label('Deadline'),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -226,18 +223,12 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                         child: TextField(
                           readOnly: true,
                           controller: TextEditingController(
-                            text: _selectedDate == null
-                                ? ''
-                                : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
+                            text: _selected_date == null ? '' : "${_selected_date!.day}/${_selected_date!.month}/${_selected_date!.year}",
                           ),
-                          decoration: _inputDecoration('Date').copyWith(
-                            prefixIcon: const Icon(
-                              Icons.calendar_today,
-                              size: 20,
-                              color: AppColors.outline,
-                            ),
+                          decoration: _input_decoration('Date').copyWith(
+                            prefixIcon: const Icon(Icons.calendar_today, size: 20, color: AppColors.outline),
                           ),
-                          onTap: _pickDate,
+                          onTap: _pick_date,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -245,38 +236,42 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                         child: TextField(
                           readOnly: true,
                           controller: TextEditingController(
-                            text: _selectedTime == null
-                                ? ''
-                                : _formatTime(_selectedTime!),
+                            text: _selected_time == null ? '' : _format_time(_selected_time!),
                           ),
-                          decoration: _inputDecoration('Time').copyWith(
-                            prefixIcon: const Icon(
-                              Icons.schedule,
-                              size: 20,
-                              color: AppColors.outline,
-                            ),
+                          decoration: _input_decoration('Time').copyWith(
+                            prefixIcon: const Icon(Icons.schedule, size: 20, color: AppColors.outline),
                           ),
-                          onTap: _pickTime,
+                          onTap: _pick_time,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Status'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _build_label('High Priority Task'),
+                      Switch(
+                        value: _is_priority,
+                        activeColor: AppColors.primary,
+                        onChanged: (value) => setState(() => _is_priority = value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _build_label('Status'),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceContainerLow,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.outlineVariant.withOpacity(0.6),
-                      ),
+                      border: Border.all(color: AppColors.outlineVariant.withOpacity(0.6)),
                     ),
                     child: Row(
                       children: [
-                        Expanded(child: _buildSegmentedButton('Pending', true)),
-                        Expanded(child: _buildSegmentedButton('Done', false)),
+                        Expanded(child: _build_segmented_button('Pending', true)),
+                        Expanded(child: _build_segmented_button('Done', false)),
                       ],
                     ),
                   ),
@@ -288,41 +283,23 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: _isLoading ? null : () => Navigator.pop(context),
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: AppColors.onSurfaceVariant,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
+                  onPressed: _is_loading ? null : () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: AppColors.onSurfaceVariant, fontWeight: FontWeight.w500)),
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _updateTask,
+                  onPressed: _is_loading ? null : _update_task,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 0,
                   ),
-                  icon: _isLoading 
-                      ? const SizedBox(
-                          width: 18, 
-                          height: 18, 
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
-                        )
+                  icon: _is_loading 
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Icon(Icons.check_circle, size: 18),
-                  label: const Text(
-                    'Save Changes',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
+                  label: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -332,67 +309,34 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
     );
   }
 
-  Widget _buildLabel(String text) => Text(
-        text,
-        style: const TextStyle(
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-          color: AppColors.onSurfaceVariant,
-        ),
-      );
+  Widget _build_label(String text) => Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.onSurfaceVariant));
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _input_decoration(String hint) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(
-        color: AppColors.outline.withOpacity(0.7),
-        fontSize: 14,
-      ),
+      hintStyle: TextStyle(color: AppColors.outline.withOpacity(0.7), fontSize: 14),
       filled: true,
       fillColor: AppColors.surfaceBright,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.outlineVariant),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-      ),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.outlineVariant)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
     );
   }
 
-  Widget _buildSegmentedButton(String text, bool isPendingButton) {
-    bool isActive = _isPending == isPendingButton;
+  Widget _build_segmented_button(String text, bool is_pending_button) {
+    bool is_active = _is_pending == is_pending_button;
     return GestureDetector(
-      onTap: () => setState(() => _isPending = isPendingButton),
+      onTap: () => setState(() => _is_pending = is_pending_button),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
+          color: is_active ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
-          border: isActive
-              ? Border.all(color: AppColors.outlineVariant.withOpacity(0.3))
-              : null,
+          boxShadow: is_active ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))] : null,
+          border: is_active ? Border.all(color: AppColors.outlineVariant.withOpacity(0.3)) : null,
         ),
         alignment: Alignment.center,
-        child: Text(
-          text,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: isActive ? AppColors.primary : AppColors.onSurfaceVariant,
-          ),
-        ),
+        child: Text(text, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: is_active ? AppColors.primary : AppColors.onSurfaceVariant)),
       ),
     );
   }

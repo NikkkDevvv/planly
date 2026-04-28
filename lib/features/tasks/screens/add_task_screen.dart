@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/models/course_model.dart';
+import '../../courses/services/course_service.dart';
 import '../services/task_service.dart';
 
 class AddTaskScreen extends StatefulWidget {
@@ -10,34 +12,55 @@ class AddTaskScreen extends StatefulWidget {
 }
 
 class _AddTaskScreenState extends State<AddTaskScreen> {
-  final TaskService _taskService = TaskService();
-  final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _descController = TextEditingController();
+  final TaskService _task_service = TaskService();
+  final CourseService _course_service = CourseService();
 
-  int? _selectedCourseId;
-  bool _isPending = true;
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
-  bool _isLoading = false;
+  final TextEditingController _title_controller = TextEditingController();
+  final TextEditingController _desc_controller = TextEditingController();
+
+  int? _selected_course_id;
+  bool _is_pending = true;
+  bool _is_priority = false;
+  DateTime? _selected_date;
+  TimeOfDay? _selected_time;
+  bool _is_loading = false;
+  List<CourseModel> _courses = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load_courses();
+  }
+
+  Future<void> _load_courses() async {
+    try {
+      final courses = await _course_service.get_courses();
+      setState(() {
+        _courses = courses;
+      });
+    } catch (e) {
+      debugPrint("Error: $e");
+    }
+  }
 
   @override
   void dispose() {
-    _titleController.dispose();
-    _descController.dispose();
+    _title_controller.dispose();
+    _desc_controller.dispose();
     super.dispose();
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pick_date() async {
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2100),
     );
-    if (picked != null) setState(() => _selectedDate = picked);
+    if (picked != null) setState(() => _selected_date = picked);
   }
 
-  Future<void> _pickTime() async {
+  Future<void> _pick_time() async {
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
@@ -48,42 +71,53 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         );
       },
     );
-    if (picked != null) setState(() => _selectedTime = picked);
+    if (picked != null) setState(() => _selected_time = picked);
   }
 
-  String _formatDate(DateTime date) {
+  String _format_date(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
-  String _formatTime(TimeOfDay time) {
+  String _format_time(TimeOfDay time) {
     return "${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
 
-  Future<void> _saveTask() async {
-    if (_titleController.text.isEmpty || _selectedDate == null || _selectedTime == null) {
+  Future<void> _save_task() async {
+    if (_title_controller.text.isEmpty ||
+        _selected_date == null ||
+        _selected_time == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please fill title, date, and time')),
       );
       return;
     }
 
+    if (_selected_course_id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a course.')),
+      );
+      return;
+    }
+
     setState(() {
-      _isLoading = true;
+      _is_loading = true;
     });
 
     try {
-      final Map<String, dynamic> taskData = {
+      final String deadline_string =
+          "${_format_date(_selected_date!)} ${_format_time(_selected_time!)}:00";
+
+      final Map<String, dynamic> task_data = {
         'user_id': 1,
-        'course_id': _selectedCourseId,
-        'title': _titleController.text,
-        'description': _descController.text,
-        'deadline_date': _formatDate(_selectedDate!),
-        'deadline_time': _formatTime(_selectedTime!),
-        'status': _isPending ? 'pending' : 'done',
-        'is_priority': false,
+        'course_id': _selected_course_id,
+        'task_title': _title_controller.text,
+        'description': _desc_controller.text,
+        'deadline': deadline_string,
+        'is_finished': _is_pending ? 0 : 1,
+        'is_priority': _is_priority ? 1 : 0,
       };
 
-      await _taskService.create_task(taskData);
+      await _task_service.create_task(task_data);
 
       if (mounted) {
         Navigator.pop(context, true);
@@ -97,7 +131,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _isLoading = false;
+          _is_loading = false;
         });
       }
     }
@@ -155,45 +189,47 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildLabel('Task Title'),
+                  _build_label('Task Title'),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _titleController,
-                    decoration: _inputDecoration(
+                    controller: _title_controller,
+                    decoration: _input_decoration(
                       'e.g., Complete final project report',
                     ),
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Subject / Course'),
+                  _build_label('Subject / Course'),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<int?>(
-                    decoration: _inputDecoration('Select a subject category'),
-                    icon: const Icon(
-                      Icons.expand_more,
-                      color: AppColors.outline,
-                    ),
-                    value: _selectedCourseId,
-                    items: const [
-                      DropdownMenuItem(
+                    decoration: _input_decoration('Select a subject category'),
+                    isExpanded: true,
+                    icon: const Icon(Icons.expand_more, color: AppColors.outline),
+                    value: _selected_course_id,
+                    items: [
+                      const DropdownMenuItem(
                         value: null,
                         child: Text('General / Personal'),
                       ),
-                      DropdownMenuItem(value: 1, child: Text('Course #01')),
-                      DropdownMenuItem(value: 2, child: Text('Course #02')),
+                      ..._courses.map((course) {
+                        return DropdownMenuItem(
+                          value: course.id,
+                          child: Text(course.name),
+                        );
+                      }).toList(),
                     ],
                     onChanged: (value) =>
-                        setState(() => _selectedCourseId = value),
+                        setState(() => _selected_course_id = value),
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Description'),
+                  _build_label('Description'),
                   const SizedBox(height: 8),
                   TextField(
-                    controller: _descController,
+                    controller: _desc_controller,
                     maxLines: 3,
-                    decoration: _inputDecoration('Add additional details...'),
+                    decoration: _input_decoration('Add additional details...'),
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Deadline'),
+                  _build_label('Deadline'),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -201,18 +237,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         child: TextField(
                           readOnly: true,
                           controller: TextEditingController(
-                            text: _selectedDate == null
+                            text: _selected_date == null
                                 ? ''
-                                : "${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}",
+                                : "${_selected_date!.day}/${_selected_date!.month}/${_selected_date!.year}",
                           ),
-                          decoration: _inputDecoration('Date').copyWith(
+                          decoration: _input_decoration('Date').copyWith(
                             prefixIcon: const Icon(
                               Icons.calendar_today,
                               size: 20,
                               color: AppColors.outline,
                             ),
                           ),
-                          onTap: _pickDate,
+                          onTap: _pick_date,
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -220,24 +256,36 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                         child: TextField(
                           readOnly: true,
                           controller: TextEditingController(
-                            text: _selectedTime == null
+                            text: _selected_time == null
                                 ? ''
-                                : _formatTime(_selectedTime!),
+                                : _format_time(_selected_time!),
                           ),
-                          decoration: _inputDecoration('Time').copyWith(
+                          decoration: _input_decoration('Time').copyWith(
                             prefixIcon: const Icon(
                               Icons.schedule,
                               size: 20,
                               color: AppColors.outline,
                             ),
                           ),
-                          onTap: _pickTime,
+                          onTap: _pick_time,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  _buildLabel('Status'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _build_label('High Priority Task'),
+                      Switch(
+                        value: _is_priority,
+                        activeColor: AppColors.primary,
+                        onChanged: (value) => setState(() => _is_priority = value),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _build_label('Initial Status'),
                   const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.all(4),
@@ -250,8 +298,8 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ),
                     child: Row(
                       children: [
-                        Expanded(child: _buildSegmentedButton('Pending', true)),
-                        Expanded(child: _buildSegmentedButton('Done', false)),
+                        Expanded(child: _build_segmented_button('Pending', true)),
+                        Expanded(child: _build_segmented_button('Done', false)),
                       ],
                     ),
                   ),
@@ -263,7 +311,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 TextButton(
-                  onPressed: _isLoading ? null : () => Navigator.pop(context),
+                  onPressed: _is_loading ? null : () => Navigator.pop(context),
                   child: const Text(
                     'Cancel',
                     style: TextStyle(
@@ -274,7 +322,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 ),
                 const SizedBox(width: 16),
                 ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _saveTask,
+                  onPressed: _is_loading ? null : _save_task,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
@@ -287,11 +335,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     ),
                     elevation: 0,
                   ),
-                  icon: _isLoading 
+                  icon: _is_loading
                       ? const SizedBox(
-                          width: 18, 
-                          height: 18, 
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         )
                       : const Icon(Icons.check_circle, size: 18),
                   label: const Text(
@@ -307,7 +358,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  Widget _buildLabel(String text) => Text(
+  Widget _build_label(String text) => Text(
         text,
         style: const TextStyle(
           fontSize: 14,
@@ -316,7 +367,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
         ),
       );
 
-  InputDecoration _inputDecoration(String hint) {
+  InputDecoration _input_decoration(String hint) {
     return InputDecoration(
       hintText: hint,
       hintStyle: TextStyle(
@@ -337,16 +388,16 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
     );
   }
 
-  Widget _buildSegmentedButton(String text, bool isPendingButton) {
-    bool isActive = _isPending == isPendingButton;
+  Widget _build_segmented_button(String text, bool is_pending_button) {
+    bool is_active = _is_pending == is_pending_button;
     return GestureDetector(
-      onTap: () => setState(() => _isPending = isPendingButton),
+      onTap: () => setState(() => _is_pending = is_pending_button),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: isActive ? Colors.white : Colors.transparent,
+          color: is_active ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: isActive
+          boxShadow: is_active
               ? [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),
@@ -355,7 +406,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   ),
                 ]
               : null,
-          border: isActive
+          border: is_active
               ? Border.all(color: AppColors.outlineVariant.withOpacity(0.3))
               : null,
         ),
@@ -365,7 +416,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: isActive ? AppColors.primary : AppColors.onSurfaceVariant,
+            color: is_active ? AppColors.primary : AppColors.onSurfaceVariant,
           ),
         ),
       ),

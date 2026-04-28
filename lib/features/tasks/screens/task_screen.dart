@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/models/task_model.dart';
+import '../../../data/models/course_model.dart';
+import '../../courses/services/course_service.dart';
 import '../services/task_service.dart';
 import 'add_task_screen.dart';
 import 'task_detail_screen.dart';
@@ -13,42 +16,68 @@ class TasksScreens extends StatefulWidget {
 }
 
 class _TasksScreensState extends State<TasksScreens> {
-  final TaskService _taskService = TaskService();
-  late Future<List<TaskModel>> _futureTasks;
+  final TaskService _task_service = TaskService();
+  final CourseService _course_service = CourseService();
+  
+  late Future<List<TaskModel>> _future_tasks;
+  List<CourseModel> _courses = [];
 
   @override
   void initState() {
     super.initState();
-    _futureTasks = _taskService.get_all_tasks();
+    _refresh_data();
   }
 
-  String _formatTimeDisplay(String dateStr, String timeStr) {
+  void _refresh_data() {
+    setState(() {
+      _future_tasks = _task_service.get_all_tasks();
+      _load_courses();
+    });
+  }
+
+  Future<void> _load_courses() async {
     try {
-      DateTime deadlineDate = DateTime.parse(dateStr);
-      DateTime today = DateTime.now();
-      DateTime tomorrow = today.add(const Duration(days: 1));
-      DateTime yesterday = today.subtract(const Duration(days: 1));
-
-      bool isToday = deadlineDate.year == today.year && deadlineDate.month == today.month && deadlineDate.day == today.day;
-      bool isTomorrow = deadlineDate.year == tomorrow.year && deadlineDate.month == tomorrow.month && deadlineDate.day == tomorrow.day;
-      bool isYesterday = deadlineDate.year == yesterday.year && deadlineDate.month == yesterday.month && deadlineDate.day == yesterday.day;
-
-      if (isToday) return 'Today, $timeStr';
-      if (isTomorrow) return 'Tomorrow, $timeStr';
-      if (isYesterday) return 'Yesterday, $timeStr';
-
-      const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return '${months[deadlineDate.month]} ${deadlineDate.day}, $timeStr';
+      final courses = await _course_service.get_courses();
+      setState(() => _courses = courses);
     } catch (e) {
-      return '$dateStr $timeStr';
+      debugPrint("Error loading courses: $e");
     }
   }
 
-  bool _isOverdue(String dateStr) {
+  String _get_course_name(int? id) {
+    if (id == null) return 'General / Personal';
+    final course = _courses.firstWhere(
+      (c) => c.id == id, 
+      orElse: () => CourseModel(id: 0, user_id: 0, course_code: '', name: 'Unknown', credits: 0, lecturer: '', room: '', day_of_week: '', start_time: '', end_time: '', color_hex: '')
+    );
+    return course.name;
+  }
+
+  String _format_deadline(String date_str, String time_str) {
     try {
-      DateTime deadlineDate = DateTime.parse(dateStr);
-      DateTime today = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-      return deadlineDate.isBefore(today);
+      DateTime dt = DateTime.parse("$date_str $time_str");
+      DateTime now = DateTime.now();
+      DateTime today = DateTime(now.year, now.month, now.day);
+      DateTime target_date = DateTime(dt.year, dt.month, dt.day);
+
+      String time_part = DateFormat('h:mm a').format(dt);
+      
+      if (target_date == today) return "Today, $time_part";
+      if (target_date == today.subtract(const Duration(days: 1))) return "Yesterday, $time_part";
+      if (target_date == today.add(const Duration(days: 1))) return "Tomorrow, $time_part";
+      
+      return "${DateFormat('EEE, MMM d').format(dt)}, $time_part";
+    } catch (e) {
+      return "$date_str, $time_str";
+    }
+  }
+
+  bool _check_overdue(String date_str) {
+    try {
+      DateTime dt = DateTime.parse(date_str);
+      DateTime now = DateTime.now();
+      DateTime today = DateTime(now.year, now.month, now.day);
+      return dt.isBefore(today);
     } catch (e) {
       return false;
     }
@@ -59,102 +88,39 @@ class _TasksScreensState extends State<TasksScreens> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: AppColors.surface,
         body: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Padding(
-              padding: EdgeInsets.only(
-                top: 48,
-                left: 24,
-                right: 24,
-                bottom: 16,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Text(
                 'My Tasks',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.onSurface,
-                ),
+                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
               ),
             ),
             const TabBar(
-              indicatorColor: AppColors.primary,
-              labelColor: AppColors.primary,
-              unselectedLabelColor: AppColors.onSurfaceVariant,
+              indicatorColor: Color(0xFF6366F1),
               indicatorWeight: 3,
-              tabs: [
-                Tab(text: 'Pending'),
-                Tab(text: 'Done'),
-              ],
+              labelColor: Color(0xFF6366F1),
+              unselectedLabelColor: Colors.grey,
+              labelStyle: TextStyle(fontWeight: FontWeight.bold),
+              tabs: [Tab(text: 'Pending'), Tab(text: 'Done')],
             ),
             Expanded(
               child: FutureBuilder<List<TaskModel>>(
-                future: _futureTasks,
+                future: _future_tasks,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
-                  } else if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}'));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(child: Text('No tasks available'));
                   }
-
-                  final allTasks = snapshot.data!;
-                  final pendingTasks = allTasks.where((t) => t.status.toLowerCase() != 'done').toList();
-                  final doneTasks = allTasks.where((t) => t.status.toLowerCase() == 'done').toList();
+                  final all_tasks = snapshot.data ?? [];
+                  final pending = all_tasks.where((t) => !t.is_finished).toList();
+                  final done = all_tasks.where((t) => t.is_finished).toList();
 
                   return TabBarView(
                     children: [
-                      ListView.builder(
-                        padding: const EdgeInsets.all(24),
-                        itemCount: pendingTasks.length,
-                        itemBuilder: (context, index) {
-                          final task = pendingTasks[index];
-                          bool isOverdue = _isOverdue(task.deadline_date);
-                          
-                          String? statusLabel;
-                          if (isOverdue) {
-                            statusLabel = 'Overdue';
-                          } else if (task.is_priority) {
-                            statusLabel = 'High Priority';
-                          }
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: _buildTaskCard(
-                              context,
-                              task: task,
-                              title: task.title,
-                              category: 'Course ID: ${task.course_id ?? 'General'}',
-                              time: _formatTimeDisplay(task.deadline_date, task.deadline_time),
-                              statusLabel: statusLabel,
-                              isOverdue: isOverdue,
-                              isPriority: task.is_priority,
-                              isDone: false,
-                            ),
-                          );
-                        },
-                      ),
-                      ListView.builder(
-                        padding: const EdgeInsets.all(24),
-                        itemCount: doneTasks.length,
-                        itemBuilder: (context, index) {
-                          final task = doneTasks[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: _buildTaskCard(
-                              context,
-                              task: task,
-                              title: task.title,
-                              category: 'Course ID: ${task.course_id ?? 'General'}',
-                              time: _formatTimeDisplay(task.deadline_date, task.deadline_time),
-                              isDone: true,
-                            ),
-                          );
-                        },
-                      ),
+                      _build_task_list(pending),
+                      _build_task_list(done),
                     ],
                   );
                 },
@@ -162,168 +128,149 @@ class _TasksScreensState extends State<TasksScreens> {
             ),
           ],
         ),
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.only(bottom: 16.0),
-          child: FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const AddTaskScreen()),
-              );
-            },
-            backgroundColor: AppColors.primary,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: const Color(0xFF6366F1),
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          onPressed: () async {
+            final result = await Navigator.push(
+              context, 
+              MaterialPageRoute(builder: (context) => const AddTaskScreen())
+            );
+            if (result == true) _refresh_data();
+          },
+          child: const Icon(Icons.add, color: Colors.white, size: 28),
+        ),
+      ),
+    );
+  }
+
+  Widget _build_task_list(List<TaskModel> tasks) {
+    if (tasks.isEmpty) {
+      return const Center(
+        child: Text("No tasks found", style: TextStyle(color: Colors.grey)),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(24),
+      itemCount: tasks.length,
+      itemBuilder: (context, index) {
+        final task = tasks[index];
+        return _build_task_card(task);
+      },
+    );
+  }
+
+  Widget _build_task_card(TaskModel task) {
+    bool is_overdue = _check_overdue(task.deadline_date) && !task.is_finished;
+    Color time_color = is_overdue ? const Color(0xFFEF4444) : const Color(0xFF6366F1);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
+            );
+            if (result == true) _refresh_data();
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: Checkbox(
+                    value: task.is_finished,
+                    activeColor: const Color(0xFF6366F1),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    onChanged: (val) async {
+                      await _task_service.finish_task(task.id);
+                      _refresh_data();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF1E293B),
+                                decoration: task.is_finished ? TextDecoration.lineThrough : null,
+                              ),
+                            ),
+                          ),
+                          if (is_overdue) _build_badge("Overdue", const Color(0xFFFEE2E2), const Color(0xFFEF4444)),
+                          if (task.is_priority && !is_overdue && !task.is_finished) 
+                            _build_badge("High Priority", const Color(0xFFEEF2FF), const Color(0xFF6366F1)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _get_course_name(task.course_id),
+                        style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Icon(Icons.access_time, size: 16, color: time_color),
+                          const SizedBox(width: 6),
+                          Text(
+                            _format_deadline(task.deadline_date, task.deadline_time),
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: time_color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            child: const Icon(Icons.add, size: 28),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTaskCard(
-    BuildContext context, {
-    required TaskModel task,
-    required String title,
-    required String category,
-    required String time,
-    String? statusLabel,
-    bool isOverdue = false,
-    bool isPriority = false,
-    bool isDone = false,
-  }) {
-    Color timeIconColor = isOverdue
-        ? const Color(0xFFBA1A1A)
-        : (isPriority ? AppColors.primary : AppColors.onSurfaceVariant);
-
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => TaskDetailScreen(task: task)),
-        );
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFE2E8F0)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.03),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(top: 4),
-              width: 20,
-              height: 20,
-              decoration: BoxDecoration(
-                color: isDone ? AppColors.primary : Colors.transparent,
-                border: Border.all(
-                  color: isDone ? AppColors.primary : AppColors.outline,
-                ),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: isDone
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: isDone
-                                ? AppColors.onSurfaceVariant
-                                : AppColors.onSurface,
-                            decoration: isDone
-                                ? TextDecoration.lineThrough
-                                : null,
-                          ),
-                        ),
-                      ),
-                      if (statusLabel != null && !isDone)
-                        Container(
-                          margin: const EdgeInsets.only(left: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isOverdue
-                                ? const Color(0xFFFFDAD6)
-                                : AppColors.primaryContainer,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            statusLabel,
-                            style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                              color: isOverdue
-                                  ? const Color(0xFFBA1A1A)
-                                  : AppColors.primary,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    category,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: AppColors.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.schedule,
-                        size: 16,
-                        color: isDone
-                            ? AppColors.onSurfaceVariant
-                            : timeIconColor,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        time,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: isDone
-                              ? AppColors.onSurfaceVariant
-                              : timeIconColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+  Widget _build_badge(String text, Color bg, Color text_color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
+      child: Text(
+        text, 
+        style: TextStyle(color: text_color, fontSize: 10, fontWeight: FontWeight.bold)
       ),
     );
   }

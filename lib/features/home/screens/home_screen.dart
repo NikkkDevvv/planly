@@ -20,7 +20,13 @@ class _HomeScreensState extends State<HomeScreens> {
   late Future<List<TaskModel>> _futureTasks;
 
   final List<String> _weekdays = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   @override
@@ -36,7 +42,21 @@ class _HomeScreensState extends State<HomeScreens> {
 
   String _getFormattedDate() {
     final now = DateTime.now();
-    const months = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${_getTodayName()}, ${months[now.month]} ${now.day}';
   }
 
@@ -46,7 +66,8 @@ class _HomeScreensState extends State<HomeScreens> {
       final currentMinutes = now.hour * 60 + now.minute;
 
       final startParts = startTime.split(':');
-      final startMinutes = int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
+      final startMinutes =
+          int.parse(startParts[0]) * 60 + int.parse(startParts[1]);
 
       final endParts = endTime.split(':');
       final endMinutes = int.parse(endParts[0]) * 60 + int.parse(endParts[1]);
@@ -109,9 +130,14 @@ class _HomeScreensState extends State<HomeScreens> {
               }
 
               final todayName = _getTodayName().toLowerCase();
-              final todayCourses = snapshot.data?.where((course) => 
-                course.day_of_week.toLowerCase() == todayName
-              ).toList() ?? [];
+              final todayCourses =
+                  snapshot.data
+                      ?.where(
+                        (course) =>
+                            course.day_of_week.toLowerCase() == todayName,
+                      )
+                      .toList() ??
+                  [];
 
               if (todayCourses.isEmpty) {
                 return Container(
@@ -136,8 +162,11 @@ class _HomeScreensState extends State<HomeScreens> {
                 itemCount: sortedCourses.length,
                 itemBuilder: (context, index) {
                   final course = sortedCourses[index];
-                  final isActive = _isClassActive(course.start_time, course.end_time);
-                  
+                  final isActive = _isClassActive(
+                    course.start_time,
+                    course.end_time,
+                  );
+
                   return _buildTimelineItem(
                     time: "${course.start_time} - ${course.end_time}",
                     title: course.name,
@@ -169,7 +198,9 @@ class _HomeScreensState extends State<HomeScreens> {
               String topTaskTitle = "Clean schedule";
 
               if (snapshot.hasData) {
-                final pendingTasks = snapshot.data!.where((t) => t.status.toLowerCase() != 'done').toList();
+                final pendingTasks = snapshot.data!
+                    .where((t) => !t.is_finished)
+                    .toList();
                 pendingCount = pendingTasks.length;
                 if (pendingCount > 0) {
                   topTaskTitle = pendingTasks.first.title;
@@ -241,7 +272,9 @@ class _HomeScreensState extends State<HomeScreens> {
                       color: isActive ? AppColors.primary : Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: isActive ? AppColors.primary : AppColors.outlineVariant,
+                        color: isActive
+                            ? AppColors.primary
+                            : AppColors.outlineVariant,
                         width: 2,
                       ),
                     ),
@@ -271,7 +304,9 @@ class _HomeScreensState extends State<HomeScreens> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isActive ? AppColors.primary.withOpacity(0.5) : AppColors.outlineVariant.withOpacity(0.5),
+                        color: isActive
+                            ? AppColors.primary.withOpacity(0.5)
+                            : AppColors.outlineVariant.withOpacity(0.5),
                       ),
                       boxShadow: [
                         BoxShadow(
@@ -298,7 +333,10 @@ class _HomeScreensState extends State<HomeScreens> {
                             ),
                             if (status != null)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.primary.withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
