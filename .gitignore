@@ -34,8 +34,8 @@ migrate_working_dir/
 /coverage/
 
 # Markdown
-.PRD-MOBILE.md
-.DESIGN-MOBILE.md
+PRD-MOBILE.md
+DESIGN-MOBILE.md
 
 # Symbolication related
 app.*.symbols
