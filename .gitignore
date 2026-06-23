@@ -33,6 +33,10 @@ migrate_working_dir/
 /build/
 /coverage/
 
+# Markdown
+.PRD-MOBILE.md
+.DESIGN-MOBILE.md
+
 # Symbolication related
 app.*.symbols
 
