@@ -16,6 +16,8 @@ import '../../../data/models/task_model.dart';
 import '../../home/bloc/pomodoro_bloc.dart';
 import '../../navigation/screens/main_layout.dart';
 import '../../../data/models/course_model.dart';
+import '../widgets/workspace_timer_ring.dart';
+import '../widgets/workspace_ambient_sound.dart';
 
 class WorkspaceScreen extends StatefulWidget {
   const WorkspaceScreen({super.key});
@@ -31,18 +33,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
   // Ambient sound selector
   String _selectedSound = 'none';
   bool _isAudioMuted = false;
-
-  final List<Map<String, String>> _ambientSounds = [
-    {'id': 'none', 'name': 'Hening (Tanpa Suara)'},
-    {'id': 'rain', 'name': 'Rintik Hujan Syahdu (Rain)'},
-    {'id': 'lofi', 'name': 'Musik Fokus Lo-Fi (Lofi Synth)'},
-    {'id': 'nature', 'name': 'Kebisingan Alam (Nature Wind)'},
-    {'id': 'ocean', 'name': 'Deburan Ombak Pantai (Ocean)'},
-    {'id': 'fireplace', 'name': 'Perapian Kayu Hangat (Fireplace)'},
-    {'id': 'crickets', 'name': 'Jangkrik Malam Pedesaan (Crickets)'},
-    {'id': 'cafe', 'name': 'Suasana Kafe Tenang (Coffee Shop)'},
-    {'id': 'train', 'name': 'Perjalanan Kereta Malam (Night Train)'}
-  ];
 
   // Pomodoro mode local states
   int? _pomodoroTaskId;
@@ -382,7 +372,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                         border: Border.all(color: AppColors.outlineLight),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.01),
+                            color: Colors.black.withValues(alpha: 0.01),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -406,7 +396,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                           return Container(
                                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                             decoration: BoxDecoration(
-                                              color: state.isBreak ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                              color: state.isBreak ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                                               borderRadius: BorderRadius.circular(20),
                                             ),
                                             child: Text(
@@ -437,7 +427,22 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                       ),
 
                                 // Ambient Sounds Button
-                                _buildAmbientSoundWidget(),
+                                WorkspaceAmbientSound(
+                                  selectedSound: _selectedSound,
+                                  isAudioMuted: _isAudioMuted,
+                                  onSoundChanged: (newValue) {
+                                    if (newValue != null) {
+                                      setState(() {
+                                        _selectedSound = newValue;
+                                      });
+                                    }
+                                  },
+                                  onMuteToggled: () {
+                                    setState(() {
+                                      _isAudioMuted = !_isAudioMuted;
+                                    });
+                                  },
+                                ),
                               ],
                             ),
                           ),
@@ -450,7 +455,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                     final double maxSeconds = state.isBreak ? 300.0 : 1500.0;
                                     final double progress = state.remainingSeconds / maxSeconds;
 
-                                    return _buildTimerRing(
+                                    return WorkspaceTimerRing(
                                       displayText: state.formattedTime,
                                       progress: progress,
                                       isRunning: state.isRunning,
@@ -467,7 +472,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                                     );
                                   },
                                 )
-                              : _buildTimerRing(
+                              : WorkspaceTimerRing(
                                   displayText: _formatLectureDuration(_lectureTimeInSeconds),
                                   progress: _isLectureRunning ? null : 1.0,
                                   isRunning: _isLectureRunning,
@@ -631,7 +636,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: () => _finishLecture(courses),
+                           onPressed: () => _finishLecture(courses),
                           icon: const Icon(Icons.check_circle_outline, color: Colors.white),
                           label: const Text(
                             'Selesaikan Perkuliahan & Simpan Catatan',
@@ -652,122 +657,6 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
             },
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildAmbientSoundWidget() {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        DropdownButton<String>(
-          value: _selectedSound,
-          elevation: 4,
-          style: const TextStyle(color: AppColors.textLightPrimary, fontSize: 12, fontWeight: FontWeight.bold),
-          underline: const SizedBox(),
-          dropdownColor: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          onChanged: (String? newValue) {
-            if (newValue != null) {
-              setState(() {
-                _selectedSound = newValue;
-              });
-            }
-          },
-          items: _ambientSounds.map<DropdownMenuItem<String>>((sound) {
-            return DropdownMenuItem<String>(
-              value: sound['id'],
-              child: Text(sound['name']!),
-            );
-          }).toList(),
-        ),
-        if (_selectedSound != 'none') ...[
-          const SizedBox(width: 4),
-          IconButton(
-            icon: Icon(
-              _isAudioMuted ? Icons.volume_off : Icons.volume_up,
-              color: _isAudioMuted ? AppColors.error : AppColors.primary,
-              size: 18,
-            ),
-            onPressed: () {
-              setState(() {
-                _isAudioMuted = !_isAudioMuted;
-              });
-            },
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildTimerRing({
-    required String displayText,
-    required double? progress,
-    required bool isRunning,
-    required VoidCallback onPlayPause,
-    required VoidCallback onReset,
-  }) {
-    return Center(
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          // Circular progress Indicator
-          SizedBox(
-            width: 200,
-            height: 200,
-            child: progress == null
-                ? const CircularProgressIndicator(
-                    strokeWidth: 10,
-                    color: AppColors.primary,
-                    backgroundColor: AppColors.bgLight,
-                  )
-                : CircularProgressIndicator(
-                    value: progress,
-                    strokeWidth: 10,
-                    color: AppColors.primary,
-                    backgroundColor: AppColors.bgLight,
-                    strokeCap: StrokeCap.round,
-                  ),
-          ),
-          // Clock overlay text and controls
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                displayText,
-                style: const TextStyle(
-                  fontSize: 32,
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textLightPrimary,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(
-                      isRunning ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                      size: 38,
-                      color: AppColors.primary,
-                    ),
-                    onPressed: onPlayPause,
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.replay_circle_filled,
-                      size: 38,
-                      color: AppColors.secondary,
-                    ),
-                    onPressed: onReset,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -835,7 +724,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
                     child: Icon(
                       Icons.local_fire_department,
                       size: 18,
-                      color: index < _completedPomodoroCount ? AppColors.primary : AppColors.secondary.withOpacity(0.3),
+                      color: index < _completedPomodoroCount ? AppColors.primary : AppColors.secondary.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
